@@ -1,3 +1,4 @@
+import { requireUser } from './auth';
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
@@ -39,19 +40,7 @@ export const updateLifePhase = mutation({
     lifePhase: v.string(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await requireUser(ctx);
 
     await ctx.db.patch(user._id, {
       lifePhase: args.lifePhase,
@@ -69,19 +58,7 @@ export const updateMentorshipPreferences = mutation({
     offeringMentorship: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await requireUser(ctx);
 
     await ctx.db.patch(user._id, {
       ...(args.seekingMentorship !== undefined && { seekingMentorship: args.seekingMentorship }),
@@ -100,19 +77,7 @@ export const addMoodJournalEntry = mutation({
     note: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await requireUser(ctx);
 
     const moodJournal = user.moodJournal || [];
     
@@ -167,19 +132,7 @@ export const updateResonancePreferences = mutation({
     preferMentee: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await requireUser(ctx);
 
     const now = Date.now();
 
@@ -246,19 +199,7 @@ export const getResonancePreferences = query({
 export const findResonanceMatch = mutation({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const currentUser = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!currentUser) {
-      throw new Error("User not found");
-    }
+    const currentUser = await requireUser(ctx);
 
     // Get user's preferences
     const prefs = await ctx.db

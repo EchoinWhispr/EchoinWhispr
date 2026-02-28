@@ -20,7 +20,7 @@ export const dynamic = 'force-dynamic';
 
 function InboxPageSkeleton() {
   return (
-    <div className="min-h-screen pt-20 pb-10 px-4 md:px-8 lg:px-12 flex justify-center relative overflow-hidden">
+    <div className="min-h-[100dvh] pt-20 pb-10 px-4 md:px-8 lg:px-12 flex justify-center relative overflow-hidden">
       {/* Background Orbs */}
       <div className="absolute -top-20 -right-20 w-64 h-64 bg-gradient-to-br from-primary/20 to-transparent rounded-full blur-3xl animate-pulse" style={{ animationDuration: '4s' }} />
       <div className="absolute bottom-20 -left-20 w-48 h-48 bg-gradient-to-tr from-accent/15 to-transparent rounded-full blur-3xl animate-pulse" style={{ animationDuration: '5s' }} />
@@ -45,7 +45,10 @@ export default function InboxPage() {
   const {
     whispers,
     isLoadingWhispers,
+    isLoadingMoreWhispers,
     whispersError,
+    hasMoreWhispers,
+    loadMoreWhispers,
     conversations,
     isLoadingConversations,
     conversationsError,
@@ -93,7 +96,7 @@ export default function InboxPage() {
   };
 
   return (
-    <div className="min-h-screen pt-20 pb-10 px-4 md:px-8 lg:px-12 flex justify-center relative overflow-hidden">
+    <div className="min-h-[100dvh] pt-20 pb-24 md:pb-10 px-4 md:px-8 lg:px-12 flex justify-center relative overflow-hidden">
       {/* Animated Background Elements */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         {/* Primary Gradient Orb */}
@@ -194,10 +197,13 @@ export default function InboxPage() {
 
               <TabsContent value="whispers" className="mt-0 focus-visible:outline-none">
                 <Suspense fallback={<InboxPageSkeleton />}>
-                  <InboxContent
+              <InboxContent
                     whispers={whispers}
                     isLoadingWhispers={isLoadingWhispers}
+                    isLoadingMoreWhispers={isLoadingMoreWhispers}
                     whispersError={whispersError}
+                    hasMoreWhispers={hasMoreWhispers}
+                    loadMoreWhispers={loadMoreWhispers}
                     refetchWhispers={refetchAll}
                     markAsRead={markAsRead}
                     onReply={handleReply}

@@ -1,12 +1,16 @@
 'use client';
 
-import { Sparkles, ArrowRight, MessageSquare, Users } from 'lucide-react';
+import { Sparkles, ArrowRight, MessageSquare, Users, AtSign } from 'lucide-react';
 import Link from 'next/link';
 import { AdminStats } from '@/features/admin/components';
 import { useAdminData } from '@/features/admin/hooks';
+import { useQuery } from 'convex/react';
+import { api } from '@/lib/convex';
 
 export default function AdminDashboard() {
   const { stats, statsLoading, isSuperAdmin, pendingRequests } = useAdminData();
+  const pendingUsernameRequests = useQuery(api.users.getPendingUsernameChangeRequests);
+  const pendingUsernameCount = pendingUsernameRequests?.length ?? 0;
 
   return (
     <div className="space-y-6">
@@ -84,6 +88,31 @@ export default function AdminDashboard() {
             </p>
           </div>
         )}
+
+        {/* Username Change Requests Card — visible to all admins */}
+        <Link href="/admin/requests?tab=username" className="block group">
+          <div className="glass rounded-xl p-6 border border-white/10 hover:border-primary/30 transition-all duration-300 h-full relative">
+            {pendingUsernameCount > 0 && (
+              <div className="absolute -top-2 -right-2 w-6 h-6 bg-primary rounded-full flex items-center justify-center text-xs font-bold text-white shadow-lg shadow-primary/40">
+                {pendingUsernameCount}
+              </div>
+            )}
+            <div className="flex items-start justify-between">
+              <div>
+                <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-primary/70 to-accent flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <AtSign className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="text-lg font-semibold text-white mb-2">
+                  Username Requests
+                </h3>
+                <p className="text-sm text-muted-foreground">
+                  Review and approve user requests to change their username.
+                </p>
+              </div>
+              <ArrowRight className="w-5 h-5 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all" />
+            </div>
+          </div>
+        </Link>
       </section>
     </div>
   );

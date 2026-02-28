@@ -7,7 +7,7 @@
 
 import { useState, useCallback, useMemo } from 'react';
 import { useUser } from '@clerk/nextjs';
-import { useQuery, useConvex } from 'convex/react';
+import { usePaginatedQuery, useMutation } from 'convex/react';
 import { api } from '../../../lib/convex';
 import { whisperService } from '../services/whisperService';
 import {
@@ -26,7 +26,8 @@ export function useSendWhisper() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<AppError | null>(null);
   const { toast } = useToast();
-  const { user } = useUser();
+
+  const sendWhisperMutation = useMutation(api.whispers.sendWhisper);
 
   /**
    * Sends a whisper with optimistic updates
@@ -39,7 +40,14 @@ export function useSendWhisper() {
       setError(null);
 
       try {
-        const result = await whisperService.sendWhisper(request, user?.id || '');
+        const whisperData = {
+          recipientUsername: request.recipientUsername,
+          imageUrl: request.imageUrl,
+          content: request.content.trim(),
+          location: request.location,
+        };
+
+        const result = await sendWhisperMutation(whisperData);
 
         // Show success toast
         toast({
@@ -47,7 +55,7 @@ export function useSendWhisper() {
           description: 'Your anonymous message has been delivered.',
         });
 
-        return result;
+        return { success: true, whisperId: result } as SendWhisperResponse;
       } catch (err) {
         const whisperError = err as AppError;
         setError(whisperError);
@@ -65,7 +73,7 @@ export function useSendWhisper() {
         setIsLoading(false);
       }
     },
-    [toast, user?.id]
+    [toast, sendWhisperMutation]
   );
 
   return {
@@ -73,66 +81,6 @@ export function useSendWhisper() {
     isLoading,
     error,
     clearError: () => setError(null),
-  };
-}
-
-/**
- * Hook for receiving whispers with real-time subscriptions
- * Fetches ALL whispers at once (no pagination)
- * @returns Object with whispers data, loading state, and error handling
- */
-export function useReceivedWhispers() {
-  const convex = useConvex();
-  const [isRefreshing, setIsRefreshing] = useState(false);
-
-  const results = useQuery(api.whispers.getAllReceivedWhispers);
-
-  const whispers = useMemo(() => {
-    return (results ?? []).map(whisper => ({
-      ...whisper,
-      isOwnWhisper: false,
-      formattedTime: new Date(whisper._creationTime).toLocaleTimeString('en-US', {
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true,
-      }),
-      relativeTime: getRelativeTime(new Date(whisper._creationTime)),
-      senderName: 'Anonymous',
-      senderAvatar: undefined,
-    })) as WhisperWithSender[];
-  }, [results]);
-
-  const unreadCount = useMemo(() => {
-    return whispers.filter((whisper: WhisperWithSender) => !whisper.isRead).length;
-  }, [whispers]);
-
-  const hasUnread = useMemo(() => {
-    return unreadCount > 0;
-  }, [unreadCount]);
-
-  const isLoading = results === undefined;
-
-  const refetch = useCallback(async () => {
-    setIsRefreshing(true);
-    try {
-      await convex.query(api.whispers.getAllReceivedWhispers, {});
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, [convex]);
-
-  return {
-    whispers,
-    isLoading,
-    isLoadingMore: false,
-    isRefreshing,
-    error: null,
-    unreadCount,
-    hasUnread,
-    hasMore: false,
-    loadMore: () => {},
-    refetch,
-    clearError: () => {},
   };
 }
 
@@ -166,6 +114,71 @@ function getRelativeTime(date: Date): string {
   return 'Just now';
 }
 
+/**
+ * Hook for receiving whispers with real-time subscriptions and pagination.
+ * Loads 10 whispers at a time with a "Load More" button.
+ * @returns Object with whispers data, loading state, pagination, and error handling
+ */
+export function useReceivedWhispers() {
+  const {
+    results,
+    status,
+    loadMore,
+  } = usePaginatedQuery(
+    api.whispers.getReceivedWhispers,
+    {},
+    { initialNumItems: 10 }
+  );
+
+  const whispers = useMemo(() => {
+    return (results ?? []).map(whisper => ({
+      ...whisper,
+      isOwnWhisper: false,
+      formattedTime: new Date(whisper._creationTime).toLocaleTimeString('en-US', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+      }),
+      relativeTime: getRelativeTime(new Date(whisper._creationTime)),
+      senderName: 'Anonymous',
+      senderAvatar: undefined,
+    })) as WhisperWithSender[];
+  }, [results]);
+
+  const unreadCount = useMemo(() => {
+    return whispers.filter((whisper: WhisperWithSender) => !whisper.isRead).length;
+  }, [whispers]);
+
+  const hasUnread = useMemo(() => {
+    return unreadCount > 0;
+  }, [unreadCount]);
+
+  const isLoading = status === 'LoadingFirstPage';
+  const isLoadingMore = status === 'LoadingMore';
+  const hasMore = status === 'CanLoadMore';
+
+  const handleLoadMore = useCallback(() => {
+    if (hasMore && !isLoadingMore) {
+      loadMore(10);
+    }
+  }, [hasMore, isLoadingMore, loadMore]);
+
+  return {
+    whispers,
+    isLoading,
+    isLoadingMore,
+    isRefreshing: false,
+    error: null,
+    unreadCount,
+    hasUnread,
+    hasMore,
+    loadMore: handleLoadMore,
+    // Convex reactive queries auto-update; no manual refetch needed
+    refetch: () => {},
+    clearError: () => {},
+  };
+}
+
 
 /**
  * Hook for marking whispers as read
@@ -188,12 +201,6 @@ export function useMarkAsRead() {
 
       try {
         await whisperService.markWhisperAsRead(whisperId, user?.id || '');
-
-        // Show success toast
-        toast({
-          title: 'Message marked as read',
-          description: 'The whisper has been marked as read.',
-        });
       } catch (err) {
         const whisperError = err as AppError;
         setError(whisperError);
@@ -226,34 +233,37 @@ export function useMarkAsRead() {
  * @returns Object with all whisper operations and state
  */
 export function useWhispers() {
-  const sendWhisper = useSendWhisper();
+  const sendWhisperHook = useSendWhisper();
   const receivedWhispers = useReceivedWhispers();
-  const markAsRead = useMarkAsRead();
+  const markAsReadHook = useMarkAsRead();
 
   return {
     // Send functionality
-    sendWhisper: sendWhisper.sendWhisper,
-    isSending: sendWhisper.isLoading,
-    sendError: sendWhisper.error,
+    sendWhisper: sendWhisperHook.sendWhisper,
+    isSending: sendWhisperHook.isLoading,
+    sendError: sendWhisperHook.error,
 
     // Receive functionality
     whispers: receivedWhispers.whispers,
     isLoadingWhispers: receivedWhispers.isLoading,
+    isLoadingMoreWhispers: receivedWhispers.isLoadingMore,
     whispersError: receivedWhispers.error,
     unreadCount: receivedWhispers.unreadCount,
     hasUnread: receivedWhispers.hasUnread,
+    hasMoreWhispers: receivedWhispers.hasMore,
+    loadMoreWhispers: receivedWhispers.loadMore,
     refetchWhispers: receivedWhispers.refetch,
 
     // Mark as read functionality
-    markAsRead: markAsRead.markAsRead,
-    isMarkingAsRead: markAsRead.isLoading,
-    markAsReadError: markAsRead.error,
+    markAsRead: markAsReadHook.markAsRead,
+    isMarkingAsRead: markAsReadHook.isLoading,
+    markAsReadError: markAsReadHook.error,
 
     // Utility functions
     clearErrors: () => {
-      sendWhisper.clearError();
+      sendWhisperHook.clearError();
       receivedWhispers.clearError();
-      markAsRead.clearError();
+      markAsReadHook.clearError();
     },
   };
 }

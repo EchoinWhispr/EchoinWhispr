@@ -22,13 +22,11 @@ export const useSendMessage = () => {
         throw new Error('Message content cannot exceed 1000 characters');
       }
 
-      const messageId = await sendMessageMutation({
+      return await sendMessageMutation({
         conversationId,
         content: content.trim(),
         imageUrl,
       });
-
-      return messageId;
     } catch (err) {
       console.error('Failed to send message:', err);
 

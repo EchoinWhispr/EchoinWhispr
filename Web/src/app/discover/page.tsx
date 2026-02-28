@@ -67,7 +67,7 @@ export default function DiscoverPage() {
   };
 
   return (
-    <div className="min-h-screen pt-20 pb-10 px-4 md:px-8 lg:px-12 relative overflow-hidden">
+    <div className="min-h-[100dvh] pt-20 pb-10 px-4 md:px-8 lg:px-12 relative overflow-hidden">
       {/* Animated Background Elements */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         {/* Primary Orb */}

@@ -3,7 +3,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function SettingsLoading() {
   return (
-    <div className="min-h-screen pt-20 pb-10 px-4 md:px-8 lg:px-12 flex justify-center">
+    <div className="min-h-[100dvh] pt-20 pb-10 px-4 md:px-8 lg:px-12 flex justify-center">
       <div className="w-full max-w-4xl space-y-8">
         <header className="flex items-center gap-3 glass p-6 rounded-2xl border border-white/10">
           <Skeleton className="w-12 h-12 rounded-xl" />

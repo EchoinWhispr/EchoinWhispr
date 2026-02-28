@@ -461,7 +461,7 @@ export class AuthErrorBoundary extends Component<
 
       return (
         <main
-          className="flex min-h-screen flex-col items-center justify-center p-4 bg-background"
+          className="flex min-h-[100dvh] flex-col items-center justify-center p-4 bg-background"
           aria-live="assertive"
         >
           <Card className="w-full max-w-lg glass border-white/10" role="alert">

@@ -1,0 +1,2 @@
+﻿ΓÇëWARNΓÇë Unsupported engine: wanted: {"node":">=18.17.0 <19 || >=20.0.0 <21"} (current: {"node":"v25.5.0","pnpm":"8.15.0"})
+src/features/conversations/hooks/useSendEchoRequest.ts(15,65): error TS2551: Property 'sendEchoRequest' does not exist on type '{ echoWhisper: FunctionReference<"mutation", "public", { imageUrl?: string | undefined; whisperId: Id<"whispers">; replyContent: string; }, { conversationId: Id<"conversations">; messageId: Id<...>; }, string | undefined>; ... 7 more ...; getInitiatedConversations: FunctionReference<...>; }'. Did you mean 'getEchoRequests'?

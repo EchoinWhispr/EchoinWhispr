@@ -83,7 +83,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
             >
               Skip to main content
             </a>
-            <div className="relative flex flex-col min-h-screen">
+            <div className="relative flex flex-col min-h-[100dvh]">
               <Navigation />
               <UsernameSelectionHandler />
               <DeletedUserCheck />

@@ -13,6 +13,9 @@ import convex, { api } from '@/lib/convex';
  */
 export async function uploadFile(file: File, signal?: AbortSignal): Promise<string> {
   try {
+    if (!convex) {
+      throw new Error('Convex client not initialized. Check your environment variables.');
+    }
     const uploadUrl = await convex.action(api.fileStorage.generateUploadUrl);
 
     const response = await fetch(uploadUrl, {
@@ -47,6 +50,9 @@ export async function uploadFile(file: File, signal?: AbortSignal): Promise<stri
  */
 export async function getFileUrl(storageId: string, _signal?: AbortSignal): Promise<string> {
   try {
+    if (!convex) {
+      throw new Error('Convex client not initialized. Check your environment variables.');
+    }
     const url = await convex.action(api.fileStorage.getUrl, { storageId });
     if (!url) {
       throw new Error('File not found');
@@ -68,6 +74,9 @@ export async function getFileUrl(storageId: string, _signal?: AbortSignal): Prom
  */
 export async function deleteFile(storageId: string): Promise<void> {
   try {
+    if (!convex) {
+      throw new Error('Convex client not initialized. Check your environment variables.');
+    }
     await convex.action(api.fileStorage.deleteFile, { storageId });
   } catch (error) {
     console.error('Error deleting file:', error);

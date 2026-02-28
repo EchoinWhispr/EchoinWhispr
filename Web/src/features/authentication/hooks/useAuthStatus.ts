@@ -317,7 +317,6 @@ export function useAuthStatus(): UseAuthStatusReturn {
         clearTimeout(retryTimeoutRef.current);
         retryTimeoutRef.current = null;
       }
-      isProcessingRef.current = false;
     };
   }, [
     isClerkLoaded,

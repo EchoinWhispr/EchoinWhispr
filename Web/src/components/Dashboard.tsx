@@ -158,7 +158,7 @@ export function Dashboard() {
   const unreadWhispers = whispers.filter(w => !w.isRead).length;
 
   return (
-    <div className="min-h-screen pt-20 pb-10 px-4 md:px-8 lg:px-12 relative overflow-hidden">
+    <div className="min-h-[100dvh] pt-20 pb-24 md:pb-10 px-4 md:px-8 lg:px-12 relative overflow-hidden">
       {/* Animated Background Orbs */}
       <div className="fixed inset-0 pointer-events-none overflow-hidden">
         <div className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-br from-primary/30 via-accent/20 to-transparent rounded-full blur-3xl motion-safe:animate-pulse" style={{ animationDuration: '4s' }} />
@@ -245,10 +245,10 @@ export function Dashboard() {
                   <Clock className="w-4 h-4 text-primary/70" />
                   {formatDate()}
                 </p>
-                <h1 className="text-3xl md:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-white via-primary to-accent bg-clip-text text-transparent animate-gradient-x">
+                <h1 className="text-2xl sm:text-3xl md:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-white via-primary to-accent bg-clip-text text-transparent animate-gradient-x break-words">
                   {getGreeting()}, {displayName}!
                 </h1>
-                <p className="text-muted-foreground mt-2 max-w-md text-sm md:text-base">
+                <p className="text-muted-foreground mt-2 max-w-md text-sm md:text-base line-clamp-2">
                   Welcome back to EchoinWhispr. Here&apos;s what&apos;s happening in your connections.
                 </p>
               </div>
@@ -492,7 +492,7 @@ export function Dashboard() {
                     <Button 
                       size="sm" 
                       className="bg-gradient-to-r from-amber-600 via-orange-600 to-red-600 hover:from-amber-700 hover:via-orange-700 hover:to-red-700 shadow-lg shadow-amber-500/30 hover:shadow-amber-500/50 transition-all duration-300"
-                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                      onClick={(e) => { e.preventDefault(); e.stopPropagation(); router.push('/chambers'); }}
                     >
                       <Compass className="w-4 h-4 mr-2" /> Discover Chambers
                     </Button>

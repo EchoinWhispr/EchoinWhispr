@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, type ChangeEvent } from 'react';
+import { useState, useEffect, useMemo, type ChangeEvent } from 'react';
 import { ChevronDown, ChevronUp, Users, Search } from 'lucide-react';
+import debounce from 'lodash.debounce';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -30,8 +31,26 @@ export const RecipientSelector = ({
     setQuery(''); // Clear search
   };
 
+  // Debounce the actual query update to prevent spamming the backend
+  const debouncedSearch = useMemo(
+    () => debounce((searchTerm: string) => {
+      setQuery(searchTerm);
+    }, 500),
+    [setQuery]
+  );
+
+  // Clean up debounce on unmount
+  useEffect(() => {
+    return () => debouncedSearch.cancel();
+  }, [debouncedSearch]);
+
+  // Local state for immediate typing feedback
+  const [localQuery, setLocalQuery] = useState('');
+
   const handleSearchChange = (e: ChangeEvent<HTMLInputElement>) => {
-    setQuery(e.target.value);
+    const value = e.target.value;
+    setLocalQuery(value);
+    debouncedSearch(value);
   };
 
   // Handle Escape key to close dropdown
@@ -85,7 +104,7 @@ export const RecipientSelector = ({
               <Input
                 type="text"
                 placeholder="Search users by username..."
-                value={query}
+                value={localQuery}
                 onChange={handleSearchChange}
                 className="pl-10 bg-secondary/50 border-white/10 text-white placeholder:text-muted-foreground"
                 autoFocus

@@ -1,3 +1,4 @@
+import { requireUser } from './auth';
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
@@ -40,19 +41,7 @@ export const addSkill = mutation({
     category: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await requireUser(ctx);
 
     // Check if user already has this skill with same type
     const existing = await ctx.db
@@ -90,19 +79,7 @@ export const removeSkill = mutation({
     skillId: v.id("skills"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await requireUser(ctx);
 
     const skill = await ctx.db.get(args.skillId);
     if (!skill) {
@@ -156,19 +133,7 @@ export const findSkillMatch = mutation({
     type: v.union(v.literal("learn"), v.literal("teach")),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const currentUser = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!currentUser) {
-      throw new Error("User not found");
-    }
+    const currentUser = await requireUser(ctx);
 
     // If I want to learn, find people offering
     // If I want to teach, find people seeking
@@ -274,19 +239,7 @@ export const respondToSkillRequest = mutation({
     accept: v.boolean(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await requireUser(ctx);
 
     const match = await ctx.db.get(args.matchId);
     if (!match) {
@@ -316,19 +269,7 @@ export const completeSkillExchange = mutation({
     matchId: v.id("skillMatches"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await requireUser(ctx);
 
     const match = await ctx.db.get(args.matchId);
     if (!match) {

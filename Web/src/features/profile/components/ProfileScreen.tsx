@@ -9,6 +9,7 @@ import { ProfileForm } from './ProfileForm';
 import { ProfileScreenProps, ProfileFormData } from '../types';
 import { useProfile, useUpdateProfile } from '../hooks';
 import { useUser } from '@clerk/nextjs';
+import { useToast } from '@/hooks/use-toast';
 
 /**
  * ProfileScreen component manages the main profile display and editing functionality.
@@ -43,6 +44,9 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
 
   // Use update profile hook
   const { updateProfile, isLoading: updateLoading } = useUpdateProfile();
+  
+  // Toast for error handling
+  const { toast } = useToast();
 
   // Combine props and hook data
   const currentProfile = profile || initialProfile;
@@ -68,8 +72,12 @@ export const ProfileScreen: React.FC<ProfileScreenProps> = ({
       });
       setIsEditing(false);
     } catch (error) {
-      // Error handling is done in the hook
       console.error('Failed to save profile:', error);
+      toast({
+        title: "Failed to save profile",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive"
+      });
     }
   };
 

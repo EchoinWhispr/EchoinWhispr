@@ -3,7 +3,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function InsightsLoading() {
   return (
-    <div className="min-h-screen pt-20 pb-10 px-4 md:px-8 lg:px-12">
+    <div className="min-h-[100dvh] pt-20 pb-10 px-4 md:px-8 lg:px-12">
       <div className="max-w-4xl mx-auto space-y-8">
         <header className="glass p-6 rounded-2xl border border-white/10">
           <div className="flex items-center gap-3">

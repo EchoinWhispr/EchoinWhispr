@@ -1,0 +1,29 @@
+┌─────────────────────┬────────────────────────────────────────────────────────┐
+│ moderate            │ js-yaml has prototype pollution in merge (<<)          │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Package             │ js-yaml                                                │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Vulnerable versions │ >=4.0.0 <4.1.1                                         │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Patched versions    │ >=4.1.1                                                │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Paths               │ . > @typescript-eslint/eslint-plugin@6.21.0 >          │
+│                     │ @typescript-eslint/parser@6.21.0 > eslint@8.57.1 >     │
+│                     │ @eslint/eslintrc@2.1.4 > js-yaml@4.1.0                 │
+│                     │                                                        │
+│                     │ . > @typescript-eslint/eslint-plugin@6.21.0 >          │
+│                     │ @typescript-eslint/parser@6.21.0 > eslint@8.57.1 >     │
+│                     │ js-yaml@4.1.0                                          │
+│                     │                                                        │
+│                     │ . > @typescript-eslint/eslint-plugin@6.21.0 >          │
+│                     │ @typescript-eslint/type-utils@6.21.0 >                 │
+│                     │ @typescript-eslint/utils@6.21.0 > eslint@8.57.1 >      │
+│                     │ @eslint/eslintrc@2.1.4 > js-yaml@4.1.0                 │
+│                     │                                                        │
+│                     │ ... Found 402 paths, run `pnpm why js-yaml` for more   │
+│                     │ information                                            │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ More info           │ https://github.com/advisories/GHSA-mh29-5h37-fv8m      │
+└─────────────────────┴────────────────────────────────────────────────────────┘
+1 vulnerabilities found
+Severity: 1 moderate

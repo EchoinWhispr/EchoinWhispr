@@ -115,225 +115,232 @@ const faqs = [
 // Components
 // ═══════════════════════════════════════════════════════════════════════
 
+
+// Deterministic pseudo-random (same seed = same sequence every render)
 const seededRandom = (seed: number) => {
-  const x = Math.sin(seed++) * 10000;
+  const x = Math.sin(seed + 1) * 10000;
   return x - Math.floor(x);
 };
 
-const generateStars = (count: number, seedOffset: number) => {
-  return Array.from({ length: count }).map((_, i) => {
-    const size = seededRandom(i + seedOffset) * 3 + 1;
-    let topR = seededRandom(i + seedOffset + 100);
-    let leftR = seededRandom(i + seedOffset + 200);
+// Canvas-based animated star field
+const OrbitingStars = () => {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
 
-    // Push stars out of the central 30% radius so they don't overlap the mask
-    const dx = leftR - 0.5;
-    const dy = topR - 0.5;
-    const dist = Math.sqrt(dx * dx + dy * dy);
-    
-    if (dist < 0.25) {
-      const pushFactor = 0.25 / dist;
-      leftR = 0.5 + dx * pushFactor;
-      topR = 0.5 + dy * pushFactor;
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    const STAR_COUNT = 200;
+    const stars: { x: number; y: number; r: number; hue: number; speed: number; layer: number }[] = [];
+    for (let i = 0; i < STAR_COUNT; i++) {
+      stars.push({
+        x: seededRandom(i * 3 + 1) * 2 - 1,
+        y: seededRandom(i * 3 + 2) * 2 - 1,
+        r: seededRandom(i * 3 + 3) * 2 + 0.5,
+        hue: seededRandom(i * 7 + 3) * 360,
+        speed: seededRandom(i * 3 + 4) * 0.4 + 0.1,
+        layer: Math.floor(seededRandom(i * 3 + 5) * 3),
+      });
     }
 
-    const top = `${topR * 100}%`;
-    const left = `${leftR * 100}%`;
-    const colorType = seededRandom(i + seedOffset + 300);
-    const color = colorType > 0.7 ? 'bg-primary' : colorType > 0.4 ? 'bg-accent' : colorType > 0.2 ? 'bg-cyan-300' : 'bg-white';
-    
-    let shadowColor = 'rgba(255,255,255,0.8)';
-    if (color === 'bg-primary') shadowColor = 'rgba(14,165,233,0.8)';
-    else if (color === 'bg-accent') shadowColor = 'rgba(217,70,239,0.8)';
-    else if (color === 'bg-cyan-300') shadowColor = 'rgba(34,211,238,0.8)';
+    let angle = 0;
+    let rafId = 0;
 
-    return { id: i, top, left, size, color, shadowColor };
-  });
-};
+    // Use window dimensions directly — the canvas fills the whole viewport
+    const setSize = () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    };
+    setSize();
+    window.addEventListener('resize', setSize, { passive: true });
 
-const starsLayer1 = generateStars(120, 0);
-const starsLayer2 = generateStars(160, 1000);
-const starsLayer3 = generateStars(80, 2000);
+    const draw = () => {
+      const W = canvas.width;
+      const H = canvas.height;
+      if (W === 0 || H === 0) { rafId = requestAnimationFrame(draw); return; }
 
-const OrbitingStars = () => {
+      angle += 0.002;
+      ctx.clearRect(0, 0, W, H);
+      const cx = W / 2;
+      const cy = H / 2;
+
+      for (const star of stars) {
+        const spd = [0.4, 0.8, 1.2][star.layer] * star.speed;
+        const cosA = Math.cos(angle * spd);
+        const sinA = Math.sin(angle * spd);
+        const rx = star.x * cosA - star.y * sinA;
+        const ry = star.x * sinA + star.y * cosA;
+        if (Math.sqrt(rx * rx + ry * ry) < 0.18) continue;
+
+        const px = cx + rx * cx;
+        const py = cy + ry * cy;
+        const alpha = [0.35, 0.6, 0.85][star.layer];
+
+        ctx.beginPath();
+        ctx.arc(px, py, star.r, 0, Math.PI * 2);
+        ctx.fillStyle = `hsla(${star.hue}, 90%, 85%, ${alpha})`;
+        ctx.fill();
+
+        if (star.r > 1.5) {
+          ctx.beginPath();
+          ctx.arc(px, py, star.r * 3, 0, Math.PI * 2);
+          ctx.fillStyle = `hsla(${star.hue}, 90%, 85%, ${alpha * 0.12})`;
+          ctx.fill();
+        }
+      }
+
+      if (!reduced) {
+        rafId = requestAnimationFrame(draw);
+      }
+    };
+
+    if (reduced) {
+      // Draw static frame
+      draw();
+    } else {
+      // Start animation loop
+      rafId = requestAnimationFrame(draw);
+    }
+
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.removeEventListener('resize', setSize);
+    };
+  }, []);
+
   return (
-    <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-0 overflow-hidden" style={{ perspective: '1200px' }}>
-      
-      <div className="absolute inset-0 opacity-30">
-        {starsLayer3.map((star) => (
-          <div 
-            key={`bg-${star.id}`}
-            className={`absolute rounded-full ${star.color}`}
-            style={{
-              top: star.top,
-              left: star.left,
-              width: `${star.size * 0.5}px`,
-              height: `${star.size * 0.5}px`,
-            }}
-          />
-        ))}
-      </div>
-
-      <motion.div 
-        animate={{ rotateZ: 360, rotateX: 15 }}
-        transition={{ duration: 60, repeat: Infinity, ease: 'linear' }}
-        className="absolute w-[200%] h-[200%] sm:w-[150%] sm:h-[150%] max-w-4xl aspect-square opacity-70"
-        style={{ transformStyle: 'preserve-3d' }}
-      >
-        {starsLayer1.map((star) => (
-          <div 
-            key={`l1-${star.id}`}
-            className={`absolute rounded-full ${star.color}`}
-            style={{
-              top: star.top,
-              left: star.left,
-              width: `${star.size}px`,
-              height: `${star.size}px`,
-              boxShadow: `0 0 ${star.size * 3}px ${star.size}px ${star.shadowColor}`,
-            }}
-          />
-        ))}
-      </motion.div>
-
-      <motion.div 
-        animate={{ rotateZ: -360, rotateY: 20 }}
-        transition={{ duration: 90, repeat: Infinity, ease: 'linear' }}
-        className="absolute w-[250%] h-[250%] sm:w-[200%] sm:h-[200%] max-w-6xl aspect-square pointer-events-none opacity-50"
-        style={{ transformStyle: 'preserve-3d' }}
-      >
-        {starsLayer2.map((star) => (
-          <div 
-            key={`l2-${star.id}`}
-            className={`absolute rounded-full ${star.color}`}
-            style={{
-              top: star.top,
-              left: star.left,
-              width: `${star.size * 1.2}px`,
-              height: `${star.size * 1.2}px`,
-              boxShadow: `0 0 ${star.size * 4}px ${star.size}px ${star.shadowColor}`,
-            }}
-          />
-        ))}
-      </motion.div>
-
-    </div>
+    <canvas
+      ref={canvasRef}
+      className="absolute inset-0 pointer-events-none"
+      style={{ width: '100%', height: '100%', mixBlendMode: 'screen' }}
+    />
   );
 };
 
 // ═══════════════════════════════════════════════════════════════════════
-// Frame Sequencer Canvas
+// Frame Sequencer Canvas — progressive loading, mobile-adaptive
 // ═══════════════════════════════════════════════════════════════════════
 
 const FRAME_COUNT = 240;
 
+const getFrameStep = () => {
+  if (typeof window === 'undefined') return 1;
+  if (window.innerWidth < 640) return 3;
+  if (window.innerWidth < 1024) return 2;
+  return 1;
+};
+
 const FrameSequencer = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
-  const imagesRef = useRef<HTMLImageElement[]>([]);
-  const currentFrameRef = useRef(1);
 
-  // Preload Images
   useEffect(() => {
-    const loadedImages: HTMLImageElement[] = [];
-    for (let i = 1; i <= FRAME_COUNT; i++) {
-      const img = new window.Image();
-      const paddedIndex = i.toString().padStart(3, '0');
-      img.src = `/frames/ezgif-frame-${paddedIndex}.png`;
-      loadedImages.push(img);
-    }
-    imagesRef.current = loadedImages;
-  }, []);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d', { alpha: true });
+    if (!ctx) return;
 
-  // Update logic on scroll using native window events for rock-solid reliability
-  useEffect(() => {
-    let ticking = false;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+    const step = getFrameStep();
+    const images = new Map<number, HTMLImageElement>();
+    let currentFrame = 1;
+
+    // Draw frame — with onload retry if the image isn't decoded yet
     const drawFrame = (frameIndex: number) => {
-      const images = imagesRef.current;
-      if (images.length === 0 || !images[frameIndex - 1]) return;
-      const canvas = canvasRef.current;
-      if (!canvas) return;
+      const snapped = Math.round((frameIndex - 1) / step) * step + 1;
+      const clamped = Math.max(1, Math.min(FRAME_COUNT, snapped));
+      const img = images.get(clamped);
+      if (!img) return;
 
-      const ctx = canvas.getContext('2d', { alpha: true });
-      if (!ctx) return;
-
-      const img = images[frameIndex - 1];
-
-      const drawImg = () => {
-        // PERF OPTIMIZATION: Set canvas size natively ONLY if it changes to prevent layout thrashing
+      const doDraw = () => {
         if (canvas.width !== img.width || canvas.height !== img.height) {
           canvas.width = img.width || 800;
           canvas.height = img.height || 800;
         } else {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
         }
-        
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        
-        // Blackout the third-party watermark in the bottom-right corner of the frames
-        const watermarkWidth = canvas.width * 0.22;
-        const watermarkHeight = canvas.height * 0.12;
-        ctx.fillStyle = '#000000';
-        ctx.fillRect(
-          canvas.width - watermarkWidth, 
-          canvas.height - watermarkHeight, 
-          watermarkWidth, 
-          watermarkHeight
-        );
+        // Cover watermark in bottom-right
+        ctx.fillStyle = '#000';
+        ctx.fillRect(canvas.width * 0.78, canvas.height * 0.88, canvas.width * 0.22, canvas.height * 0.12);
       };
 
-      if (img.complete && img.naturalHeight !== 0) {
-        drawImg();
+      if (img.complete && img.naturalHeight > 0) {
+        doDraw();
       } else {
-        // Fallback for fast scrolling while preloading
-        img.onload = drawImg;
+        // Retry once image fully loads
+        img.onload = doDraw;
       }
     };
 
+    // Scroll handler
+    let ticking = false;
     const handleScroll = () => {
       if (!ticking) {
-        window.requestAnimationFrame(() => {
-          // Use clientHeight for more stable mobile visual heights
-          const docHeight = Math.max(1, document.documentElement.scrollHeight - document.documentElement.clientHeight);
-          const scrollFraction = Math.max(0, Math.min(1, window.scrollY / docHeight));
-          
-          let targetFrame = Math.floor(scrollFraction * (FRAME_COUNT - 1)) + 1;
-          
-          if (targetFrame > FRAME_COUNT) targetFrame = FRAME_COUNT;
-          if (targetFrame < 1) targetFrame = 1;
-          
-          // Only draw if the frame actually changed
-          if (currentFrameRef.current !== targetFrame) {
-            currentFrameRef.current = targetFrame;
-            drawFrame(targetFrame);
-          }
-          
+        requestAnimationFrame(() => {
+          const docH = Math.max(1, document.documentElement.scrollHeight - document.documentElement.clientHeight);
+          const target = Math.floor((window.scrollY / docH) * (FRAME_COUNT - 1)) + 1;
+          if (currentFrame !== target) { currentFrame = target; drawFrame(target); }
           ticking = false;
         });
         ticking = true;
       }
     };
-
     window.addEventListener('scroll', handleScroll, { passive: true });
     window.addEventListener('resize', handleScroll, { passive: true });
+
+    // Progressive loading
+    const frameIndices: number[] = [];
+    for (let i = 1; i <= FRAME_COUNT; i += step) frameIndices.push(i);
+
+    const loadBatch = (indices: number[], onDone?: () => void) => {
+      let remaining = indices.length;
+      if (remaining === 0) { onDone?.(); return; }
+      indices.forEach((i) => {
+        if (images.has(i)) { if (--remaining === 0) onDone?.(); return; }
+        const img = new window.Image();
+        img.decoding = 'async';
+        img.onload = img.onerror = () => { if (--remaining === 0) onDone?.(); };
+        img.src = `/frames/ezgif-frame-${i.toString().padStart(3, '0')}.png`;
+        images.set(i, img);
+      });
+    };
+
+    // Phase 1: 30 frames → show first frame immediately (or just frame 240 if reduced)
+    const initialBatch = reduced ? [240] : frameIndices.slice(0, 30);
     
-    // Trigger once on mount to ensure first frame renders
-    const initialDraw = setTimeout(() => {
-      handleScroll();
-      drawFrame(1);
-    }, 50);
-    
+    loadBatch(initialBatch, () => {
+      // If reduced, draw 240 (which will snap to nearest loaded frame, 240 itself)
+      drawFrame(reduced ? 240 : 1);
+      
+      if (!reduced) {
+        // Phase 2: rest deferred
+        const rest = frameIndices.slice(30);
+        if ('requestIdleCallback' in window) {
+          (window as Window & { requestIdleCallback: (cb: () => void) => void }).requestIdleCallback(() => loadBatch(rest));
+        } else {
+          setTimeout(() => loadBatch(rest), 400);
+        }
+      }
+    });
+
+    if (reduced) return;
+
     return () => {
       window.removeEventListener('scroll', handleScroll);
       window.removeEventListener('resize', handleScroll);
-      clearTimeout(initialDraw);
     };
   }, []);
 
   return (
-    <canvas 
-      ref={canvasRef} 
-      className="w-full h-full object-contain pointer-events-none mix-blend-screen"
-      style={{ willChange: 'transform' }}
+    <canvas
+      ref={canvasRef}
+      className="pointer-events-none mix-blend-screen"
+      style={{ width: '100%', height: '100%', objectFit: 'contain' }}
     />
   );
 };
@@ -349,7 +356,7 @@ export default function LandingPage(): JSX.Element {
   const yBg = useTransform(scrollYProgress, [0, 1], ["0%", "30%"]);
 
   return (
-    <div ref={containerRef} className="min-h-screen w-full bg-black text-foreground overflow-x-hidden font-sans">
+    <div ref={containerRef} className="min-h-[100dvh] w-full bg-black text-foreground overflow-x-hidden font-sans">
       
       {/* ═══════════════════════════════════════════════════════════════════
           Navigation
@@ -395,7 +402,7 @@ export default function LandingPage(): JSX.Element {
         <div className="absolute inset-0 bg-black z-[1]" />
         
         {/* Orbiting Stars System */}
-        <div className="absolute inset-0 z-[10] mix-blend-screen pointer-events-none">
+        <div className="absolute inset-0 z-[10] pointer-events-none">
           <OrbitingStars />
         </div>
 

@@ -2,12 +2,12 @@ name: Convex Backend CI/CD
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
     paths:
       - 'Convex/**'
       - '.github/workflows/convex-ci.yml'
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
     paths:
       - 'Convex/**'
       - '.github/workflows/convex-ci.yml'
@@ -82,15 +82,12 @@ jobs:
           fi
 
       - name: Validate Convex schema
+        if: ${{ secrets.CONVEX_STAGING_DEPLOYMENT != '' && secrets.CONVEX_STAGING_DEPLOY_KEY != '' }}
         working-directory: ./Convex
-        run: |
-          pnpm dlx convex generate
-          if [ $? -eq 0 ]; then
-            echo "Schema validation successful"
-          else
-            echo "Schema validation failed"
-            exit 1
-          fi
+        env:
+          CONVEX_DEPLOYMENT: ${{ secrets.CONVEX_STAGING_DEPLOYMENT }}
+          CONVEX_DEPLOY_KEY: ${{ secrets.CONVEX_STAGING_DEPLOY_KEY }}
+        run: pnpm generate
 
       - name: Check for schema changes
         id: schema-check

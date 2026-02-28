@@ -3,6 +3,7 @@ import { paginationOptsValidator } from 'convex/server';
 import { mutation, query } from './_generated/server';
 import { Doc, Id } from './_generated/dataModel';
 import { enforceRateLimit, recordRateLimitedAction } from './rateLimits';
+import { requireUser } from './auth';
 
 /**
  * Echo a whisper by sending a reply and creating an active conversation.
@@ -16,15 +17,7 @@ export const echoWhisper = mutation({
     imageUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error('Not authenticated');
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!user) throw new Error('User not found');
+    const user = await requireUser(ctx);
     const userId = user._id;
 
     // Validate reply content length (allow empty if image attached)
@@ -96,6 +89,23 @@ export const echoWhisper = mutation({
       conversationId,
     });
 
+    // Populate conversation participants junction table
+    const now = Date.now();
+    await ctx.db.insert('conversationParticipants', {
+      conversationId,
+      userId: whisper.senderId,
+      joinedAt: now,
+      status: 'active',
+    });
+    await ctx.db.insert('conversationParticipants', {
+      conversationId,
+      userId: whisper.recipientId,
+      hasUnreadMessages: false, // sender of the echo starts with no unread
+      lastReadMessageId: messageId,
+      joinedAt: now,
+      status: 'active',
+    });
+
     return { conversationId, messageId };
   },
 });
@@ -109,15 +119,7 @@ export const sendEchoRequest = mutation({
     whisperId: v.id('whispers'),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error('Not authenticated');
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!user) throw new Error('User not found');
+    const user = await requireUser(ctx);
     const userId = user._id;
 
     // Get the whisper
@@ -156,18 +158,25 @@ export const sendEchoRequest = mutation({
       updatedAt: Date.now(),
     });
 
+    // Populate junction table
+    const now = Date.now();
+    await ctx.db.insert('conversationParticipants', {
+      conversationId,
+      userId: whisper.senderId,
+      joinedAt: now,
+      status: 'initiated',
+    });
+    await ctx.db.insert('conversationParticipants', {
+      conversationId,
+      userId: userId,
+      joinedAt: now,
+      status: 'initiated',
+    });
+
     return conversationId;
   },
 });
 
-/**
- * Send an echo request to initiate a conversation from a received whisper.
- * Creates a conversation with 'initiated' status.
- */
-/**
- * Send a message in a conversation.
- * Validates that the user is a participant in the conversation and the conversation is active.
- */
 /**
  * Send a message in a conversation.
  * Validates that the user is a participant in the conversation and the conversation is active.
@@ -179,15 +188,7 @@ export const sendMessage = mutation({
     imageUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error('Not authenticated');
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!user) throw new Error('User not found');
+    const user = await requireUser(ctx);
     const userId = user._id;
 
     await enforceRateLimit(ctx, userId, 'SEND_MESSAGE');
@@ -235,19 +236,10 @@ export const sendMessage = mutation({
 export const getMessages = query({
   args: {
     conversationId: v.id('conversations'),
-    limit: v.optional(v.number()),
-    cursor: v.optional(v.union(v.number(), v.null())),
+    paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error('Not authenticated');
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!user) throw new Error('User not found');
+    const user = await requireUser(ctx);
     const userId = user._id;
 
     const conversation = await ctx.db.get(args.conversationId);
@@ -256,31 +248,11 @@ export const getMessages = query({
       throw new Error('Not authorized to view this conversation');
     }
 
-    const limit = Math.min(Math.max(args.limit ?? 50, 1), 100);
-    const cursor = args.cursor ?? null;
-
-    let query = ctx.db
+    return await ctx.db
       .query('messages')
-      .withIndex('by_conversation_created', (q) => {
-        const base = q.eq('conversationId', args.conversationId);
-        if (cursor !== null) {
-          return base.lt('createdAt', cursor);
-        }
-        return base;
-      })
-      .order('desc');
-
-    const messages = await query.take(limit);
-
-    const nextCursor = messages.length === limit 
-      ? messages[messages.length - 1]?.createdAt ?? null 
-      : null;
-
-    return {
-      messages: messages.reverse(),
-      nextCursor,
-      hasMore: nextCursor !== null,
-    };
+      .withIndex('by_conversation_created', (q) => q.eq('conversationId', args.conversationId))
+      .order('desc')
+      .paginate(args.paginationOpts);
   },
 });
 
@@ -293,15 +265,7 @@ export const acceptEchoRequest = mutation({
     conversationId: v.id('conversations'),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error('Not authenticated');
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!user) throw new Error('User not found');
+    const user = await requireUser(ctx);
     const userId = user._id;
 
     const conversation = await ctx.db.get(args.conversationId);
@@ -322,6 +286,15 @@ export const acceptEchoRequest = mutation({
       updatedAt: Date.now(),
     });
 
+    const participants = await ctx.db
+      .query('conversationParticipants')
+      .withIndex('by_conversation', (q) => q.eq('conversationId', args.conversationId))
+      .collect();
+
+    for (const p of participants) {
+      await ctx.db.patch(p._id, { status: 'active' });
+    }
+
     return args.conversationId;
   },
 });
@@ -335,15 +308,7 @@ export const rejectEchoRequest = mutation({
     conversationId: v.id('conversations'),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error('Not authenticated');
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!user) throw new Error('User not found');
+    const user = await requireUser(ctx);
     const userId = user._id;
 
     const conversation = await ctx.db.get(args.conversationId);
@@ -364,6 +329,15 @@ export const rejectEchoRequest = mutation({
       updatedAt: Date.now(),
     });
 
+    const participants = await ctx.db
+      .query('conversationParticipants')
+      .withIndex('by_conversation', (q) => q.eq('conversationId', args.conversationId))
+      .collect();
+
+    for (const p of participants) {
+      await ctx.db.patch(p._id, { status: 'closed' });
+    }
+
     return args.conversationId;
   },
 });
@@ -378,15 +352,7 @@ export const getEchoRequests = query({
     paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error('Not authenticated');
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!user) throw new Error('User not found');
+    const user = await requireUser(ctx);
     const userId = user._id;
 
     // OPTIMIZATION: Use the new index to fetch directly
@@ -425,15 +391,7 @@ export const getConversation = query({
     conversationId: v.id('conversations'),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error('Not authenticated');
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!user) throw new Error('User not found');
+    const user = await requireUser(ctx);
     const userId = user._id;
 
     const conversation = await ctx.db.get(args.conversationId);
@@ -454,28 +412,20 @@ export const getActiveConversations = query({
   args: {
     paginationOpts: paginationOptsValidator,
   },
-  handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) return [];
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!user) return [];
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
     const userId = user._id;
 
-    // NOTE: Proper pagination requires a junction table or by_participant index.
-    // Without schema changes, we use take() with client-side filtering.
-    // paginationOpts argument is accepted but not used due to schema constraints.
-    const conversations = await ctx.db
-      .query('conversations')
-      .withIndex('by_status', (q) => q.eq('status', 'active'))
-      .take(200); // Reasonable limit for user's conversations
+    const participations = await ctx.db
+      .query('conversationParticipants')
+      .withIndex('by_user_status', (q) => q.eq('userId', userId).eq('status', 'active'))
+      .take(200);
 
-    // Filter to only conversations where user is a participant
-    return conversations.filter(conv => conv.participantIds.includes(userId));
+    const conversations = await Promise.all(
+      participations.map(p => ctx.db.get(p.conversationId))
+    );
+
+    return conversations.filter((conv): conv is Doc<"conversations"> => conv !== null);
   },
 });
 
@@ -485,24 +435,18 @@ export const getActiveConversations = query({
  */
 export const getInitiatedConversations = query({
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error('Not authenticated');
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!user) throw new Error('User not found');
+    const user = await requireUser(ctx);
     const userId = user._id;
 
-    // OPTIMIZATION: Add limit to prevent fetching entire table
-    const conversations = await ctx.db
-      .query('conversations')
-      .withIndex('by_status', (q) => q.eq('status', 'initiated'))
+    const participations = await ctx.db
+      .query('conversationParticipants')
+      .withIndex('by_user_status', (q) => q.eq('userId', userId).eq('status', 'initiated'))
       .take(100);
 
-    // Filter to only conversations where user is a participant
-    return conversations.filter(conv => conv.participantIds.includes(userId));
+    const conversations = await Promise.all(
+      participations.map(p => ctx.db.get(p.conversationId))
+    );
+
+    return conversations.filter((conv): conv is Doc<"conversations"> => conv !== null);
   },
 });

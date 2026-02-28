@@ -3,7 +3,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function DiscoverLoading() {
   return (
-    <div className="min-h-screen pt-20 pb-10 px-4 md:px-8 lg:px-12 flex justify-center">
+    <div className="min-h-[100dvh] pt-20 pb-10 px-4 md:px-8 lg:px-12 flex justify-center">
       <div className="w-full max-w-4xl space-y-8">
         <Card className="glass border-white/10 p-6 md:p-8 rounded-3xl relative overflow-hidden">
           <div className="flex items-center gap-3 md:gap-4 mb-6">

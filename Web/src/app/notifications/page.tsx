@@ -81,7 +81,7 @@ export default function NotificationsPage() {
   const notifications = notificationsData?.notifications || [];
 
   return (
-    <div className="min-h-screen pt-20 pb-10 px-4 md:px-8 lg:px-12 flex justify-center">
+    <div className="min-h-[100dvh] pt-20 pb-10 px-4 md:px-8 lg:px-12 flex justify-center">
       <div className="w-full max-w-3xl">
         <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6 md:mb-8 glass p-4 sm:p-6 rounded-2xl border border-white/10">
           <div className="flex items-center gap-3">

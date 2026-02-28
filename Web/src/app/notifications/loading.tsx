@@ -3,7 +3,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 
 export default function NotificationsLoading() {
   return (
-    <div className="min-h-screen pt-20 pb-10 px-4 md:px-8 lg:px-12 flex justify-center">
+    <div className="min-h-[100dvh] pt-20 pb-10 px-4 md:px-8 lg:px-12 flex justify-center">
       <div className="w-full max-w-3xl">
         <div className="glass p-4 sm:p-6 rounded-2xl border border-white/10 mb-6 md:mb-8">
           <div className="flex items-center gap-3">

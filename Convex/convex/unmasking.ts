@@ -1,3 +1,4 @@
+import { requireUser } from './auth';
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
@@ -14,19 +15,7 @@ export const requestUnmasking = mutation({
     conversationId: v.id("conversations"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const requester = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!requester) {
-      throw new Error("User not found");
-    }
+    const requester = await requireUser(ctx);
 
     // Get the conversation
     const conversation = await ctx.db.get(args.conversationId);
@@ -48,15 +37,14 @@ export const requestUnmasking = mutation({
     // Check for existing request in either direction
     const existingFromMe = await ctx.db
       .query("unmaskingRequests")
-      .withIndex("by_conversation", (q) => q.eq("conversationId", args.conversationId))
+      .withIndex("by_conversation_requester", (q) => 
+        q.eq("conversationId", args.conversationId).eq("requesterId", requester._id)
+      )
       .filter((q) => 
-        q.and(
-          q.eq(q.field("requesterId"), requester._id),
-          q.or(
-            q.eq(q.field("status"), "pending"),
-            q.eq(q.field("status"), "mutual_pending"),
-            q.eq(q.field("status"), "completed")
-          )
+        q.or(
+          q.eq(q.field("status"), "pending"),
+          q.eq(q.field("status"), "mutual_pending"),
+          q.eq(q.field("status"), "completed")
         )
       )
       .first();
@@ -72,12 +60,8 @@ export const requestUnmasking = mutation({
     // Check if the other person has requested
     const existingFromThem = await ctx.db
       .query("unmaskingRequests")
-      .withIndex("by_conversation", (q) => q.eq("conversationId", args.conversationId))
-      .filter((q) => 
-        q.and(
-          q.eq(q.field("requesterId"), targetId),
-          q.eq(q.field("status"), "pending")
-        )
+      .withIndex("by_conversation_target_status", (q) => 
+        q.eq("conversationId", args.conversationId).eq("targetId", requester._id).eq("status", "pending")
       )
       .first();
 
@@ -128,19 +112,7 @@ export const respondToUnmasking = mutation({
     accept: v.boolean(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await requireUser(ctx);
 
     const request = await ctx.db.get(args.requestId);
     if (!request) {
@@ -169,14 +141,13 @@ export const respondToUnmasking = mutation({
     // First check if we also have a pending request
     const ourRequest = await ctx.db
       .query("unmaskingRequests")
-      .withIndex("by_conversation", (q) => q.eq("conversationId", request.conversationId))
+      .withIndex("by_conversation_requester", (q) => 
+        q.eq("conversationId", request.conversationId).eq("requesterId", user._id)
+      )
       .filter((q) => 
-        q.and(
-          q.eq(q.field("requesterId"), user._id),
-          q.or(
-            q.eq(q.field("status"), "pending"),
-            q.eq(q.field("status"), "mutual_pending")
-          )
+        q.or(
+          q.eq(q.field("status"), "pending"),
+          q.eq(q.field("status"), "mutual_pending")
         )
       )
       .first();
@@ -229,19 +200,7 @@ export const completeUnmasking = mutation({
     conversationId: v.id("conversations"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await requireUser(ctx);
 
     // Check that both users have accepted or mutual_pending
     const allRequests = await ctx.db
@@ -446,29 +405,14 @@ export const cancelUnmaskingRequest = mutation({
     conversationId: v.id("conversations"),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
-    }
+    const user = await requireUser(ctx);
 
     const request = await ctx.db
       .query("unmaskingRequests")
-      .withIndex("by_conversation", (q) => q.eq("conversationId", args.conversationId))
-      .filter((q) => 
-        q.and(
-          q.eq(q.field("requesterId"), user._id),
-          q.eq(q.field("status"), "pending")
-        )
+      .withIndex("by_conversation_requester", (q) => 
+        q.eq("conversationId", args.conversationId).eq("requesterId", user._id)
       )
+      .filter((q) => q.eq(q.field("status"), "pending"))
       .first();
 
     if (!request) {

@@ -53,7 +53,7 @@ export function Providers({ children }: ProvidersProps) {
 
   if (!clerkPublishableKey) {
     return (
-      <main className="flex min-h-screen items-center justify-center p-6">
+      <main className="flex min-h-[100dvh] items-center justify-center p-6">
         <div className="text-center space-y-2">
           <p className="text-lg font-semibold">
             Authentication initialization failed
@@ -82,11 +82,19 @@ export function Providers({ children }: ProvidersProps) {
             afterSignInUrl="/"
             afterSignUpUrl="/"
           >
-            <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
-              <SessionManager />
-              {children}
-              <Toaster />
-            </ConvexProviderWithClerk>
+            {convex ? (
+              <ConvexProviderWithClerk client={convex} useAuth={useAuth}>
+                <SessionManager />
+                {children}
+                <Toaster />
+              </ConvexProviderWithClerk>
+            ) : (
+              <>
+                <SessionManager />
+                {children}
+                <Toaster />
+              </>
+            )}
           </ClerkProvider>
         </AuthErrorBoundary>
       </ToastStateProvider>

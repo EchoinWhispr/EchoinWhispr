@@ -1,3 +1,4 @@
+import { requireUser } from './auth';
 'use strict';
 
 import { v } from 'convex/values';
@@ -95,19 +96,7 @@ export const markAsRead = mutation({
     notificationId: v.id('notifications'),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Not authenticated');
-    }
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', (q) => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error('User not found');
-    }
+    const user = await requireUser(ctx);
 
     const notification = await ctx.db.get(args.notificationId);
     if (!notification || notification.userId !== user._id) {
@@ -124,19 +113,7 @@ export const markAsRead = mutation({
 export const markAllAsRead = mutation({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Not authenticated');
-    }
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', (q) => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error('User not found');
-    }
+    const user = await requireUser(ctx);
 
     // Cap at 500 to prevent unbounded operations - user should retry if count equals cap
     const unreadNotifications = await ctx.db
@@ -160,19 +137,7 @@ export const deleteNotification = mutation({
     notificationId: v.id('notifications'),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Not authenticated');
-    }
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', (q) => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error('User not found');
-    }
+    const user = await requireUser(ctx);
 
     const notification = await ctx.db.get(args.notificationId);
     if (!notification || notification.userId !== user._id) {
@@ -189,19 +154,7 @@ export const deleteNotification = mutation({
 export const clearAllNotifications = mutation({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Not authenticated');
-    }
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', (q) => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error('User not found');
-    }
+    const user = await requireUser(ctx);
 
     // Cap at 500 to prevent unbounded operations - user should retry if count equals cap
     const notifications = await ctx.db

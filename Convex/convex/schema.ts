@@ -146,7 +146,11 @@ export default defineSchema({
     .index('by_chain', ['chainId'])
     .index('by_parent', ['parentWhisperId'])
     .index('by_scheduled', ['isScheduled', 'scheduledFor'])
-    .index('by_recipient_archived', ['recipientId', 'isArchived']), // OPTIMIZATION: For archived whisper queries
+    .index('by_sender_scheduled', ['senderId', 'isScheduled', 'scheduledFor']) // OPTIMIZATION: For sent scheduled whispers
+    .index('by_recipient_archived', ['recipientId', 'isArchived']) // OPTIMIZATION: For archived whisper queries
+    .index('by_sender_archived', ['senderId', 'isArchived']) // OPTIMIZATION: For sent archived queries
+    .index('by_recipient_conversation', ['recipientId', 'conversationId']) // OPTIMIZATION: For standalone whispers
+    .index('by_recipient_conversation_isRead', ['recipientId', 'conversationId', 'isRead']), // OPTIMIZATION: For unread whisper counts
 
   // Conversations table - deferred feature for conversation evolution
   conversations: defineTable({
@@ -165,9 +169,22 @@ export default defineSchema({
     .index("by_participant_key", ["participantKey"])
     .index("by_initial_whisper", ["initialWhisperId"])
     .index("by_status", ["status"])
-
     .index("by_archived", ["isArchived"])
     .index("by_initial_sender_status", ["initialSenderId", "status"]),
+
+  // Junction table connecting users to conversations
+  conversationParticipants: defineTable({
+    conversationId: v.id("conversations"),
+    userId: v.id("users"),
+    hasUnreadMessages: v.optional(v.boolean()),
+    lastReadMessageId: v.optional(v.id("messages")),
+    joinedAt: v.number(),
+    status: v.optional(v.union(v.literal("initiated"), v.literal("active"), v.literal("closed"))),
+  })
+    .index("by_conversation", ["conversationId"])
+    .index("by_user", ["userId"])
+    .index("by_conversation_user", ["conversationId", "userId"])
+    .index("by_user_status", ["userId", "status"]),
 
   // User profiles table - additional user information
   profiles: defineTable({
@@ -412,6 +429,8 @@ export default defineSchema({
     .index('by_requester', ['requesterId'])
     .index('by_target', ['targetId'])
     .index('by_conversation', ['conversationId'])
+    .index('by_conversation_requester', ['conversationId', 'requesterId']) // OPTIMIZATION: Finding reqs from user in convo
+    .index('by_conversation_target_status', ['conversationId', 'targetId', 'status']) // OPTIMIZATION: Finding pending reqs to user in convo
     .index('by_status', ['status']),
 
   // === Connection Analytics ===
@@ -441,7 +460,8 @@ export default defineSchema({
     lastTypingAt: v.number(),
   })
     .index('by_conversation', ['conversationId'])
-    .index('by_user', ['userId']),
+    .index('by_user', ['userId'])
+    .index('by_conversation_user', ['conversationId', 'userId']), // OPTIMIZATION: Check existing typing indicator
 
   // === Echo Chamber Typing (for group chats) ===
   echoChamberTyping: defineTable({
@@ -485,5 +505,25 @@ export default defineSchema({
     .index('by_user', ['userId'])
     .index('by_user_read', ['userId', 'read'])
     .index('by_created', ['createdAt']),
+
+  // === Username Change Requests ===
+  usernameChangeRequests: defineTable({
+    userId: v.id('users'),
+    currentUsername: v.string(),
+    requestedUsername: v.string(),
+    status: v.union(
+      v.literal('pending'),
+      v.literal('approved'),
+      v.literal('rejected')
+    ),
+    reviewedBy: v.optional(v.id('users')),
+    reviewNote: v.optional(v.string()),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  })
+    .index('by_user_id', ['userId'])
+    .index('by_status', ['status'])
+    .index('by_requested_username', ['requestedUsername'])
+    .index('by_requested_username_status', ['requestedUsername', 'status']), // OPTIMIZATION: Checking pending reservations
 });
 

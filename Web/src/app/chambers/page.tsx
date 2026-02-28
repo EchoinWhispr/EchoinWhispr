@@ -209,7 +209,7 @@ export default function ChambersPage() {
   };
 
   return (
-    <div className="min-h-screen pt-20 pb-10 px-4 md:px-8 lg:px-12">
+    <div className="min-h-[100dvh] pt-20 pb-10 px-4 md:px-8 lg:px-12">
       <div className="max-w-4xl mx-auto space-y-8">
         <header className="relative">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-accent/10 to-transparent rounded-3xl blur-3xl opacity-40" />

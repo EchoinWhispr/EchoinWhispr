@@ -48,6 +48,7 @@ class WhisperService {
 
       // Send whisper using Convex mutation with retry logic
       const result = await withRetry(async () => {
+        if (!convex) throw createAppError(ERROR_CODES.SERVER_ERROR);
         return await convex.mutation(api.whispers.sendWhisper, whisperData);
       });
 
@@ -79,6 +80,10 @@ class WhisperService {
         throw createAppError(ERROR_CODES.UNAUTHORIZED);
       }
 
+      if (!convex) {
+        throw createAppError(ERROR_CODES.SERVER_ERROR);
+      }
+
       const convexUser = await convex.query(api.users.getCurrentUser);
       if (!convexUser) {
         throw createAppError(ERROR_CODES.USER_NOT_FOUND);
@@ -90,6 +95,7 @@ class WhisperService {
       // pagination would need to be implemented by accepting a cursor parameter
       // and forwarding it to paginationOpts.cursor
       const response = await withRetry(async () => {
+        if (!convex) throw createAppError(ERROR_CODES.SERVER_ERROR);
         return await convex.query(api.whispers.getReceivedWhispers, { paginationOpts: { numItems: 20, cursor: null } });
       });
 
@@ -123,6 +129,7 @@ class WhisperService {
 
       // Mark whisper as read using Convex mutation with retry logic
       await withRetry(async () => {
+        if (!convex) throw createAppError(ERROR_CODES.SERVER_ERROR);
         return await convex.mutation(api.whispers.markWhisperAsRead, {
           whisperId: whisperId as GenericId<'whispers'>,
         });

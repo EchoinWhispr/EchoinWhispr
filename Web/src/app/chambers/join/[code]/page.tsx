@@ -44,7 +44,7 @@ export default function JoinChamberPage() {
 
   if (chamber === undefined) {
     return (
-      <div className="min-h-screen pt-20 flex items-center justify-center">
+      <div className="min-h-[100dvh] pt-20 flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
       </div>
     );
@@ -52,7 +52,7 @@ export default function JoinChamberPage() {
 
   if (!chamber) {
     return (
-      <div className="min-h-screen pt-20 flex items-center justify-center p-4">
+      <div className="min-h-[100dvh] pt-20 flex items-center justify-center p-4">
         <Card className="glass border-white/10 p-8 text-center max-w-md w-full">
           <Radio className="w-16 h-16 mx-auto mb-4 text-red-400/50" />
           <h2 className="text-xl font-bold mb-2">Invalid Invite</h2>
@@ -68,7 +68,7 @@ export default function JoinChamberPage() {
   }
 
   return (
-    <div className="min-h-screen pt-20 flex items-center justify-center p-4">
+    <div className="min-h-[100dvh] pt-20 flex items-center justify-center p-4">
       <Card className="glass border-white/10 p-8 max-w-md w-full relative overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-cyan-500/5" />
         

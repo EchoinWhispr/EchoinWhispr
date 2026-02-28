@@ -81,7 +81,7 @@ export default function WhisperDetailPage() {
 
   if (!isValidId) {
     return (
-      <div className="min-h-screen pt-20 pb-10 px-4 md:px-8 lg:px-12 flex justify-center">
+      <div className="min-h-[100dvh] pt-20 pb-10 px-4 md:px-8 lg:px-12 flex justify-center">
         <div className="w-full max-w-3xl">
           <div className="glass p-8 rounded-2xl border border-red-500/20 bg-red-500/5 text-center">
             <Shield className="w-12 h-12 mx-auto mb-4 text-red-400" />
@@ -190,7 +190,7 @@ export default function WhisperDetailPage() {
   // Loading state skeleton matching the new design
   if (!whisper) {
     return (
-      <div className="min-h-screen pt-20 pb-10 px-4 md:px-8 lg:px-12 flex justify-center">
+      <div className="min-h-[100dvh] pt-20 pb-10 px-4 md:px-8 lg:px-12 flex justify-center">
         <div className="w-full max-w-3xl space-y-6">
           <div className="flex items-center gap-4 mb-8">
             <div className="h-10 w-10 bg-primary/20 rounded-lg animate-pulse" />
@@ -214,7 +214,7 @@ export default function WhisperDetailPage() {
   }
 
   return (
-    <div className="min-h-screen pt-20 pb-10 px-4 md:px-8 lg:px-12 flex justify-center">
+    <div className="min-h-[100dvh] pt-20 pb-10 px-4 md:px-8 lg:px-12 flex justify-center">
       <div className="w-full max-w-3xl">
         {/* Header */}
         <header className="flex items-center justify-between mb-8">

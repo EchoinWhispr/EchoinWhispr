@@ -326,7 +326,7 @@ export default function ChamberViewPage() {
 
   if (!chamber) {
     return (
-      <div className="min-h-screen pt-20 flex items-center justify-center">
+      <div className="min-h-[100dvh] pt-20 flex items-center justify-center">
         <div className="animate-pulse text-muted-foreground">Loading chamber...</div>
       </div>
     );
@@ -334,7 +334,7 @@ export default function ChamberViewPage() {
 
   if (!chamber.isMember) {
     return (
-      <div className="min-h-screen pt-20 flex items-center justify-center">
+      <div className="min-h-[100dvh] pt-20 flex items-center justify-center">
         <Card className="glass border-white/10 p-8 text-center max-w-md">
           <Radio className="w-16 h-16 mx-auto mb-4 text-muted-foreground/50" />
           <h2 className="text-xl font-bold mb-2">Access Denied</h2>
@@ -353,7 +353,7 @@ export default function ChamberViewPage() {
   }
 
   return (
-    <div className="min-h-screen pt-16 flex flex-col">
+    <div className="min-h-[100dvh] pt-16 flex flex-col">
       {/* Header */}
       <header className="sticky top-16 z-40 glass border-b border-white/10 px-4 py-3">
         <div className="max-w-4xl mx-auto flex items-center justify-between">

@@ -1,5 +1,7 @@
 'use client';
 
+export const dynamic = "force-dynamic";
+
 import { Suspense } from 'react';
 import { WhisperComposer } from '@/features/whispers/components/WhisperComposer';
 import { useUser } from '@clerk/nextjs';
@@ -9,7 +11,7 @@ import { ArrowLeft, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const ComposePageSkeleton = () => (
-  <div className="min-h-screen pt-20 pb-10 px-4 md:px-8 lg:px-12 flex justify-center">
+  <div className="min-h-[100dvh] pt-20 pb-10 px-4 md:px-8 lg:px-12 flex justify-center">
     <div className="w-full max-w-2xl animate-pulse">
       <div className="h-20 bg-primary/10 rounded-2xl mb-8 border border-white/5"></div>
       <div className="h-64 bg-card/50 rounded-2xl border border-white/5"></div>
@@ -32,7 +34,7 @@ export default function ComposePage() {
   }
 
   return (
-    <div className="min-h-screen pt-20 pb-10 px-4 md:px-8 lg:px-12 flex justify-center">
+    <div className="min-h-[100dvh] pt-20 pb-24 md:pb-10 px-4 md:px-8 lg:px-12 flex justify-center">
       <div className="w-full max-w-2xl">
         <header className="flex items-center justify-between mb-6 md:mb-8 glass p-4 sm:p-6 rounded-2xl border border-white/10">
           <div className="flex items-center gap-2 sm:gap-3">

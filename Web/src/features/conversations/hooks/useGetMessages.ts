@@ -1,4 +1,4 @@
-import { useQuery } from 'convex/react';
+import { usePaginatedQuery } from 'convex/react';
 import { api } from '@/lib/convex';
 import { Id, Doc } from '@/lib/convex';
 
@@ -10,24 +10,23 @@ export interface PaginatedMessagesResponse {
 
 export const useGetMessages = (
   conversationId: string,
-  cursor?: number | null
+  _cursor?: number | null
 ): {
   messages: Doc<'messages'>[];
   nextCursor: number | null;
   hasMore: boolean;
   isLoading: boolean;
 } => {
-  const result = useQuery(
+  const { results: messages, status } = usePaginatedQuery(
     api.conversations.getMessages,
-    cursor !== undefined
-      ? { conversationId: conversationId as Id<'conversations'>, cursor }
-      : { conversationId: conversationId as Id<'conversations'> }
-  ) as PaginatedMessagesResponse | undefined;
+    { conversationId: conversationId as Id<'conversations'> },
+    { initialNumItems: 50 }
+  );
 
   return {
-    messages: result?.messages || [],
-    nextCursor: result?.nextCursor ?? null,
-    hasMore: result?.hasMore ?? false,
-    isLoading: result === undefined,
+    messages: (messages || []) as Doc<'messages'>[],
+    nextCursor: null, // Obsolete
+    hasMore: status === "CanLoadMore",
+    isLoading: status === "LoadingFirstPage",
   };
 };

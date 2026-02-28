@@ -1,17 +1,25 @@
 'use client';
 
 /**
- * Content component that handles the inbox logic.
- * Separated for better error boundary isolation and suspense handling.
+ * Content component that handles the inbox logic with read/unread filtering
+ * and paginated load-more support.
  */
+import { useState, useMemo } from 'react';
 import { WhisperList } from '@/features/whispers/components/WhisperList';
 import { WhisperWithSender } from '@/features/whispers/types';
 import { AppError } from '@/lib/errors';
+import { Button } from '@/components/ui/button';
+import { Loader2, Inbox, MailOpen, Mail } from 'lucide-react';
+
+type FilterType = 'all' | 'unread' | 'read';
 
 interface InboxContentProps {
   whispers: WhisperWithSender[] | undefined;
   isLoadingWhispers: boolean;
+  isLoadingMoreWhispers?: boolean;
   whispersError: AppError | null;
+  hasMoreWhispers?: boolean;
+  loadMoreWhispers?: () => void;
   refetchWhispers: () => void;
   markAsRead: (whisperId: string) => Promise<void>;
   onReply: (whisperId: string) => void;
@@ -20,42 +28,38 @@ interface InboxContentProps {
 export function InboxContent({
   whispers,
   isLoadingWhispers,
+  isLoadingMoreWhispers = false,
   whispersError,
+  hasMoreWhispers = false,
+  loadMoreWhispers,
   refetchWhispers,
   markAsRead,
   onReply,
 }: InboxContentProps) {
+  const [filter, setFilter] = useState<FilterType>('all');
+
+  const filteredWhispers = useMemo(() => {
+    if (!whispers) return [];
+    switch (filter) {
+      case 'unread':
+        return whispers.filter(w => !w.isRead);
+      case 'read':
+        return whispers.filter(w => w.isRead);
+      default:
+        return whispers;
+    }
+  }, [whispers, filter]);
+
+  const unreadCount = useMemo(() => whispers?.filter(w => !w.isRead).length ?? 0, [whispers]);
+  const readCount = useMemo(() => whispers?.filter(w => w.isRead).length ?? 0, [whispers]);
+
   // Show loading state
   if (isLoadingWhispers) {
     return (
-      <div className="text-center py-12">
-        <div className="text-gray-400 mb-4">
-          <svg
-            className="mx-auto h-12 w-12 animate-spin"
-            fill="none"
-            viewBox="0 0 24 24"
-          >
-            <circle
-              className="opacity-25"
-              cx="12"
-              cy="12"
-              r="10"
-              stroke="currentColor"
-              strokeWidth="4"
-            ></circle>
-            <path
-              className="opacity-75"
-              fill="currentColor"
-              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-            ></path>
-          </svg>
-        </div>
-        <h3 className="text-lg font-medium text-gray-900 mb-2">
-          Loading your inbox...
-        </h3>
-        <p className="text-gray-600">
-          Please wait while we fetch your whispers.
-        </p>
+      <div className="space-y-4 py-4">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="h-20 rounded-xl bg-white/5 border border-white/5 animate-pulse" />
+        ))}
       </div>
     );
   }
@@ -63,87 +67,167 @@ export function InboxContent({
   // Show error state
   if (whispersError) {
     return (
-      <div className="text-center py-12">
-        <div className="text-red-400 mb-4">
-          <svg
-            className="mx-auto h-12 w-12"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"
-            />
-          </svg>
+      <div className="text-center py-12 space-y-4">
+        <div className="w-16 h-16 mx-auto rounded-2xl bg-destructive/10 flex items-center justify-center">
+          <Mail className="w-8 h-8 text-destructive/50" />
         </div>
-        <h3 className="text-lg font-medium text-gray-900 mb-2">
-          Unable to load inbox
-        </h3>
-        <p className="text-gray-600 mb-4">
-          {whispersError.message ||
-            'An unexpected error occurred while loading your inbox.'}
-        </p>
-        <button
-          onClick={() => refetchWhispers()}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-        >
+        <div>
+          <h3 className="text-lg font-medium mb-1">Unable to load inbox</h3>
+          <p className="text-muted-foreground text-sm">
+            {whispersError.message || 'An unexpected error occurred while loading your inbox.'}
+          </p>
+        </div>
+        <Button onClick={() => refetchWhispers()} variant="outline" size="sm" className="gap-2">
           Try Again
-        </button>
+        </Button>
       </div>
     );
   }
 
-  // Show empty state if no whispers
+  // Show empty state if no whispers at all
   if (!whispers || whispers.length === 0) {
     return (
-      <div className="text-center py-12">
-        <div className="text-gray-400 mb-4">
-          <svg
-            className="mx-auto h-12 w-12"
-            fill="none"
-            viewBox="0 0 24 24"
-            stroke="currentColor"
-          >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M3 8l7.89 4.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"
-            />
-          </svg>
+      <div className="text-center py-12 space-y-4">
+        <div className="w-20 h-20 mx-auto rounded-2xl bg-gradient-to-br from-primary/20 to-accent/20 flex items-center justify-center shadow-lg shadow-primary/10">
+          <Inbox className="w-10 h-10 text-primary/50" />
         </div>
-        <h3 className="text-lg font-medium text-gray-900 mb-2">
-          Your inbox is empty
-        </h3>
-        <p className="text-gray-600 mb-4">
-          You haven&apos;t received any whispers yet. Share your profile to
-          start receiving anonymous messages!
-        </p>
-        <button
-          onClick={() => refetchWhispers()}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
-        >
-          Check Again
-        </button>
+        <div>
+          <h3 className="text-lg font-medium mb-1">Your inbox is empty</h3>
+          <p className="text-muted-foreground text-sm max-w-xs mx-auto">
+            You haven&apos;t received any whispers yet. Share your profile to start receiving anonymous messages!
+          </p>
+        </div>
       </div>
     );
   }
 
-  // Show whispers list
   return (
-    <WhisperList
-      whispers={whispers}
-      isLoading={isLoadingWhispers}
-      error={whispersError}
-      showMarkAsRead={true}
-      onWhisperMarkAsRead={markAsRead}
-      onReply={onReply}
-      emptyStateMessage="No whispers found in your inbox."
-      emptyStateActionLabel="Refresh Inbox"
-      onEmptyStateAction={refetchWhispers}
-    />
+    <div className="space-y-4">
+      {/* Filter Tabs */}
+      <div className="flex items-center gap-2 py-1">
+        <FilterButton
+          active={filter === 'all'}
+          onClick={() => setFilter('all')}
+          label="All"
+          count={whispers.length}
+          icon={<Inbox className="w-3.5 h-3.5" />}
+        />
+        <FilterButton
+          active={filter === 'unread'}
+          onClick={() => setFilter('unread')}
+          label="Unread"
+          count={unreadCount}
+          icon={<Mail className="w-3.5 h-3.5" />}
+          highlight={unreadCount > 0}
+        />
+        <FilterButton
+          active={filter === 'read'}
+          onClick={() => setFilter('read')}
+          label="Read"
+          count={readCount}
+          icon={<MailOpen className="w-3.5 h-3.5" />}
+        />
+      </div>
+
+      {/* Empty filtered state */}
+      {filteredWhispers.length === 0 ? (
+        <div className="text-center py-10 text-muted-foreground">
+          <div className="w-14 h-14 mx-auto mb-3 rounded-xl bg-white/5 flex items-center justify-center">
+            {filter === 'unread' ? (
+              <Mail className="w-6 h-6 opacity-30" />
+            ) : (
+              <MailOpen className="w-6 h-6 opacity-30" />
+            )}
+          </div>
+          <p className="text-sm">
+            No {filter === 'all' ? '' : filter} whispers
+          </p>
+        </div>
+      ) : (
+        <>
+          <WhisperList
+            whispers={filteredWhispers}
+            isLoading={false}
+            error={whispersError}
+            showMarkAsRead={true}
+            onWhisperMarkAsRead={markAsRead}
+            onReply={onReply}
+            emptyStateMessage={`No ${filter === 'all' ? '' : filter} whispers found.`}
+            emptyStateActionLabel="Refresh Inbox"
+            onEmptyStateAction={refetchWhispers}
+          />
+
+          {/* Load More Button — only show on 'all' filter since we paginate the source */}
+          {filter === 'all' && hasMoreWhispers && (
+            <div className="flex justify-center pt-4 pb-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={loadMoreWhispers}
+                disabled={isLoadingMoreWhispers}
+                className="gap-2 min-w-[120px] border-white/10 hover:bg-white/10 hover:border-white/20 transition-all"
+              >
+                {isLoadingMoreWhispers ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Loading...
+                  </>
+                ) : (
+                  'Load More'
+                )}
+              </Button>
+            </div>
+          )}
+
+          {/* Loading more indicator at bottom */}
+          {filter === 'all' && !hasMoreWhispers && whispers.length >= 10 && (
+            <p className="text-center text-xs text-muted-foreground/50 py-2">
+              All whispers loaded
+            </p>
+          )}
+        </>
+      )}
+    </div>
+  );
+}
+
+function FilterButton({
+  active,
+  onClick,
+  label,
+  count,
+  icon,
+  highlight = false,
+}: {
+  active: boolean;
+  onClick: () => void;
+  label: string;
+  count: number;
+  icon: React.ReactNode;
+  highlight?: boolean;
+}) {
+  return (
+    <button
+      onClick={onClick}
+      className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-200 ${
+        active
+          ? 'bg-gradient-to-r from-primary/20 to-accent/10 text-white border border-primary/30 shadow-sm shadow-primary/10'
+          : 'text-muted-foreground hover:text-white hover:bg-white/5 border border-transparent'
+      }`}
+    >
+      {icon}
+      {label}
+      <span
+        className={`ml-0.5 px-1.5 py-0.5 rounded-full text-[10px] font-semibold transition-colors ${
+          active
+            ? 'bg-primary/30 text-white'
+            : highlight
+            ? 'bg-primary/20 text-primary'
+            : 'bg-white/10 text-muted-foreground'
+        }`}
+      >
+        {count}
+      </span>
+    </button>
   );
 }

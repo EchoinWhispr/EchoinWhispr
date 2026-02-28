@@ -1,18 +1,16 @@
-import { useState, useCallback } from 'react';
-import { useConvex } from 'convex/react';
-import { api } from '@/lib/convex';
+import { useCallback } from 'react';
 import { useWhispers } from '@/features/whispers/hooks/useWhispers';
 import { useGetConversations } from '@/features/conversations/hooks/useGetConversations';
 
 export const useInboxData = () => {
-  const convex = useConvex();
-  const [isRefreshing, setIsRefreshing] = useState(false);
-
   const {
     whispers,
     isLoadingWhispers,
+    isLoadingMoreWhispers,
     whispersError,
     unreadCount: whisperUnreadCount,
+    hasMoreWhispers,
+    loadMoreWhispers,
     refetchWhispers,
     markAsRead,
   } = useWhispers();
@@ -30,30 +28,25 @@ export const useInboxData = () => {
   const hasError = whispersError || conversationsError;
   const error = whispersError || conversationsError;
 
-  const refetchAll = useCallback(async () => {
-    setIsRefreshing(true);
-    try {
-      await Promise.all([
-        convex.query(api.whispers.getAllReceivedWhispers, {}),
-        convex.query(api.conversations.getActiveConversations, { paginationOpts: { numItems: 200, cursor: null } }),
-      ]);
-      refetchWhispers();
-    } finally {
-      setIsRefreshing(false);
-    }
-  }, [convex, refetchWhispers]);
+  // Convex reactive queries update automatically; refetch is a no-op
+  // but we keep the interface compatible
+  const refetchAll = useCallback(() => {
+    refetchWhispers();
+  }, [refetchWhispers]);
 
   return {
     whispers: whispers || [],
     isLoadingWhispers,
+    isLoadingMoreWhispers,
     whispersError,
+    hasMoreWhispers,
+    loadMoreWhispers,
 
     conversations: conversations || [],
     isLoadingConversations,
     conversationsError,
 
     isLoading,
-    isRefreshing,
     hasError,
     error,
     totalUnreadCount,

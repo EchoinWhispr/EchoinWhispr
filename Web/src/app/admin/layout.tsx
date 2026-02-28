@@ -18,7 +18,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   // Show loading state
   if (!isLoaded || isLoading) {
     return (
-      <div className="min-h-screen pt-20 pb-10 px-4 md:px-8 lg:px-12 flex justify-center">
+      <div className="min-h-[100dvh] pt-20 pb-10 px-4 md:px-8 lg:px-12 flex justify-center">
         <div className="w-full max-w-6xl animate-pulse">
           <div className="h-16 bg-primary/10 rounded-xl mb-6" />
           <div className="h-96 bg-card/50 rounded-xl" />
@@ -46,7 +46,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   ];
 
   return (
-    <div className="min-h-screen pt-20 pb-10 px-4 md:px-8 lg:px-12">
+    <div className="min-h-[100dvh] pt-20 pb-10 px-4 md:px-8 lg:px-12">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <header className="glass rounded-2xl p-6 border border-white/10 mb-6">

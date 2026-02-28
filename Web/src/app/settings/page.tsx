@@ -7,9 +7,10 @@ import { MysterySettings } from '@/features/whispers/components/MysterySettings'
 import { NotificationSettings } from '@/features/profile/components/NotificationSettings';
 import { RequestAdminModal } from '@/features/admin/components';
 import { useAdminData } from '@/features/admin/hooks';
-import { Settings as SettingsIcon, Eye, Moon, Sun, Monitor, Heart, Briefcase, GraduationCap, Palette, Shield, Crown, ArrowRight } from 'lucide-react';
+import { Settings as SettingsIcon, Eye, Moon, Sun, Monitor, Heart, Briefcase, GraduationCap, Palette, Shield, Crown, ArrowRight, AtSign, CheckCircle2, XCircle, Clock } from 'lucide-react';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
@@ -32,12 +33,21 @@ export default function SettingsPage() {
   const lifePhases = useQuery(api.resonance.getLifePhases);
   const currentUser = useQuery(api.users.getCurrentUser);
   const hasAdmins = useQuery(api.admin.hasAdmins);
+  const myUsernameChangeRequest = useQuery(api.users.getMyUsernameChangeRequest);
 
   const updatePreferences = useMutation(api.users.updatePreferences);
   const updateResonancePrefs = useMutation(api.resonance.updateResonancePreferences);
   const updateLifePhase = useMutation(api.resonance.updateLifePhase);
   const updateMentorship = useMutation(api.resonance.updateMentorshipPreferences);
   const initializeFirstSuperAdmin = useMutation(api.admin.initializeFirstSuperAdmin);
+  const requestUsernameChange = useMutation(api.users.requestUsernameChange);
+
+  const [usernameInput, setUsernameInput] = useState('');
+  const [isSubmittingUsername, setIsSubmittingUsername] = useState(false);
+  const usernameAvailability = useQuery(
+    api.users.checkUsernameAvailability,
+    usernameInput.trim().length >= 3 ? { username: usernameInput.trim().toLowerCase() } : 'skip'
+  );
 
   // Sync saved theme preference from Convex to next-themes on load
   useEffect(() => {
@@ -99,7 +109,7 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="min-h-screen pt-20 pb-10 px-4 md:px-8 lg:px-12 flex justify-center">
+    <div className="min-h-[100dvh] pt-20 pb-10 px-4 md:px-8 lg:px-12 flex justify-center">
       <div className="w-full max-w-4xl space-y-8">
         <header className="flex items-center gap-3 glass p-6 rounded-2xl border border-white/10">
           <div className="bg-primary/20 p-2.5 rounded-xl">
@@ -112,10 +122,14 @@ export default function SettingsPage() {
         </header>
 
         <Tabs defaultValue="general" className="w-full">
-          <TabsList className="grid w-full grid-cols-3 mb-6 bg-secondary/50 p-1 rounded-xl">
+        <TabsList className="grid w-full grid-cols-4 mb-6 bg-secondary/50 p-1 rounded-xl">
             <TabsTrigger value="general" className="rounded-lg">
               <Palette className="w-4 h-4 mr-2" />
               General
+            </TabsTrigger>
+            <TabsTrigger value="account" className="rounded-lg">
+              <AtSign className="w-4 h-4 mr-2" />
+              Account
             </TabsTrigger>
             <TabsTrigger value="resonance" className="rounded-lg">
               <Heart className="w-4 h-4 mr-2" />
@@ -180,6 +194,114 @@ export default function SettingsPage() {
                 </div>
               </div>
             )}
+          </TabsContent>
+
+          {/* Account Settings */}
+          <TabsContent value="account" className="space-y-4">
+            <Card className="glass border-white/10 p-6">
+              <h2 className="font-semibold mb-1 flex items-center gap-2">
+                <AtSign className="w-5 h-5 text-primary" />
+                Username
+              </h2>
+              <p className="text-sm text-muted-foreground mb-5">
+                Current username: <span className="font-mono text-white font-medium">@{currentUser?.username}</span>
+              </p>
+
+              {/* Show existing request status */}
+              {myUsernameChangeRequest?.status === 'pending' && (
+                <div className="mb-5 p-4 rounded-xl border border-amber-500/30 bg-amber-500/10 flex items-start gap-3">
+                  <Clock className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-amber-300">Request pending review</p>
+                    <p className="text-xs text-amber-300/70 mt-0.5">
+                      Requested: <span className="font-mono font-semibold">@{myUsernameChangeRequest.requestedUsername}</span> — an admin will review your request
+                    </p>
+                  </div>
+                </div>
+              )}
+
+              {myUsernameChangeRequest?.status === 'approved' && (
+                <div className="mb-5 p-4 rounded-xl border border-green-500/30 bg-green-500/10 flex items-start gap-3">
+                  <CheckCircle2 className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-green-300">Previous request approved!</p>
+                    <p className="text-xs text-green-300/70 mt-0.5">Your username was changed to <span className="font-mono font-semibold">@{myUsernameChangeRequest.requestedUsername}</span></p>
+                  </div>
+                </div>
+              )}
+
+              {myUsernameChangeRequest?.status === 'rejected' && (
+                <div className="mb-5 p-4 rounded-xl border border-red-500/30 bg-red-500/10 flex items-start gap-3">
+                  <XCircle className="w-5 h-5 text-red-400 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-red-300">Previous request declined</p>
+                    {myUsernameChangeRequest.reviewNote && (
+                      <p className="text-xs text-red-300/70 mt-0.5">{myUsernameChangeRequest.reviewNote}</p>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* Request form (only show if no pending request) */}
+              {myUsernameChangeRequest?.status !== 'pending' && (
+                <div className="space-y-3">
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm font-medium">@</span>
+                    <Input
+                      placeholder="desired_username"
+                      value={usernameInput}
+                      onChange={(e) => setUsernameInput(e.target.value.toLowerCase().replace(/[^a-z0-9_]/g, ''))}
+                      className="pl-7 font-mono bg-white/5 border-white/10 focus:border-primary/50 focus:bg-white/8"
+                      maxLength={20}
+                    />
+                    {usernameInput.length >= 3 && (
+                      <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                        {usernameAvailability === undefined ? (
+                          <div className="w-4 h-4 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+                        ) : usernameAvailability ? (
+                          <CheckCircle2 className="w-4 h-4 text-green-400" />
+                        ) : (
+                          <XCircle className="w-4 h-4 text-red-400" />
+                        )}
+                      </div>
+                    )}
+                  </div>
+
+                  <p className="text-xs text-muted-foreground/70">
+                    3–20 characters. Lowercase letters, numbers, underscores only. Requires admin approval.
+                  </p>
+
+                  <Button
+                    size="sm"
+                    disabled={
+                      isSubmittingUsername ||
+                      usernameInput.trim().length < 3 ||
+                      !usernameAvailability ||
+                      usernameInput.trim() === currentUser?.username
+                    }
+                    onClick={async () => {
+                      setIsSubmittingUsername(true);
+                      try {
+                        await requestUsernameChange({ requestedUsername: usernameInput.trim() });
+                        toast({ title: 'Request submitted', description: 'An admin will review your username change request.' });
+                        setUsernameInput('');
+                      } catch (err) {
+                        toast({ title: 'Failed to submit', description: err instanceof Error ? err.message : 'Unknown error', variant: 'destructive' });
+                      } finally {
+                        setIsSubmittingUsername(false);
+                      }
+                    }}
+                    className="gap-2"
+                  >
+                    {isSubmittingUsername ? (
+                      <><div className="w-3.5 h-3.5 rounded-full border-2 border-white/30 border-t-white animate-spin" /> Submitting...</>
+                    ) : (
+                      <><AtSign className="w-3.5 h-3.5" /> Request Username Change</>
+                    )}
+                  </Button>
+                </div>
+              )}
+            </Card>
           </TabsContent>
 
           {/* Resonance Settings */}

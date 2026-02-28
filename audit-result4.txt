@@ -1,0 +1,126 @@
+┌─────────────────────┬────────────────────────────────────────────────────────┐
+│ high                │ ip SSRF improper categorization in isPublic            │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Package             │ ip                                                     │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Vulnerable versions │ <=2.0.1                                                │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Patched versions    │ <0.0.0                                                 │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Paths               │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-constants@18.0.9 >      │
+│                     │ react-native@0.72.6 >                                  │
+│                     │ @react-native-community/cli@11.3.7 >                   │
+│                     │ @react-native-community/cli-doctor@11.3.7 > ip@1.1.9   │
+│                     │                                                        │
+│                     │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-constants@18.0.9 >      │
+│                     │ react-native@0.72.6 >                                  │
+│                     │ @react-native-community/cli@11.3.7 >                   │
+│                     │ @react-native-community/cli-hermes@11.3.7 > ip@1.1.9   │
+│                     │                                                        │
+│                     │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-linking@8.0.8 >         │
+│                     │ expo-constants@18.0.9 > react-native@0.72.6 >          │
+│                     │ @react-native-community/cli@11.3.7 >                   │
+│                     │ @react-native-community/cli-doctor@11.3.7 > ip@1.1.9   │
+│                     │                                                        │
+│                     │ ... Found 78 paths, run `pnpm why ip` for more         │
+│                     │ information                                            │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ More info           │ https://github.com/advisories/GHSA-2p57-rm9w-gvfp      │
+└─────────────────────┴────────────────────────────────────────────────────────┘
+┌─────────────────────┬────────────────────────────────────────────────────────┐
+│ moderate            │ js-yaml has prototype pollution in merge (<<)          │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Package             │ js-yaml                                                │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Vulnerable versions │ <3.14.2                                                │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Patched versions    │ >=3.14.2                                               │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Paths               │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-application@7.0.7 >     │
+│                     │ expo@49.0.23 > @expo/cli@0.10.17 >                     │
+│                     │ @expo/package-manager@1.1.2 > js-yaml@3.14.1           │
+│                     │                                                        │
+│                     │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-application@7.0.7 >     │
+│                     │ expo@49.0.23 > @expo/cli@0.10.17 > js-yaml@3.14.1      │
+│                     │                                                        │
+│                     │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-constants@18.0.9 >      │
+│                     │ expo@49.0.23 > @expo/cli@0.10.17 >                     │
+│                     │ @expo/package-manager@1.1.2 > js-yaml@3.14.1           │
+│                     │                                                        │
+│                     │ ... Found 246 paths, run `pnpm why js-yaml` for more   │
+│                     │ information                                            │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ More info           │ https://github.com/advisories/GHSA-mh29-5h37-fv8m      │
+└─────────────────────┴────────────────────────────────────────────────────────┘
+┌─────────────────────┬────────────────────────────────────────────────────────┐
+│ moderate            │ js-yaml has prototype pollution in merge (<<)          │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Package             │ js-yaml                                                │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Vulnerable versions │ >=4.0.0 <4.1.1                                         │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Patched versions    │ >=4.1.1                                                │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Paths               │ . > @typescript-eslint/eslint-plugin@6.21.0 >          │
+│                     │ @typescript-eslint/parser@6.21.0 > eslint@8.57.1 >     │
+│                     │ @eslint/eslintrc@2.1.4 > js-yaml@4.1.0                 │
+│                     │                                                        │
+│                     │ . > @typescript-eslint/eslint-plugin@6.21.0 >          │
+│                     │ @typescript-eslint/parser@6.21.0 > eslint@8.57.1 >     │
+│                     │ js-yaml@4.1.0                                          │
+│                     │                                                        │
+│                     │ . > @typescript-eslint/eslint-plugin@6.21.0 >          │
+│                     │ @typescript-eslint/type-utils@6.21.0 >                 │
+│                     │ @typescript-eslint/utils@6.21.0 > eslint@8.57.1 >      │
+│                     │ @eslint/eslintrc@2.1.4 > js-yaml@4.1.0                 │
+│                     │                                                        │
+│                     │ ... Found 156 paths, run `pnpm why js-yaml` for more   │
+│                     │ information                                            │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ More info           │ https://github.com/advisories/GHSA-mh29-5h37-fv8m      │
+└─────────────────────┴────────────────────────────────────────────────────────┘
+┌─────────────────────┬────────────────────────────────────────────────────────┐
+│ low                 │ fast-xml-parser has stack overflow in XMLBuilder with  │
+│                     │ preserveOrder                                          │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Package             │ fast-xml-parser                                        │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Vulnerable versions │ <5.3.8                                                 │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Patched versions    │ >=5.3.8                                                │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Paths               │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-constants@18.0.9 >      │
+│                     │ react-native@0.72.6 >                                  │
+│                     │ @react-native-community/cli@11.3.7 >                   │
+│                     │ @react-native-community/cli-doctor@11.3.7 >            │
+│                     │ @react-native-community/cli-platform-ios@11.3.7 >      │
+│                     │ fast-xml-parser@4.5.4                                  │
+│                     │                                                        │
+│                     │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-constants@18.0.9 >      │
+│                     │ react-native@0.72.6 >                                  │
+│                     │ @react-native-community/cli-platform-ios@11.3.7 >      │
+│                     │ fast-xml-parser@4.5.4                                  │
+│                     │                                                        │
+│                     │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-linking@8.0.8 >         │
+│                     │ expo-constants@18.0.9 > react-native@0.72.6 >          │
+│                     │ @react-native-community/cli@11.3.7 >                   │
+│                     │ @react-native-community/cli-doctor@11.3.7 >            │
+│                     │ @react-native-community/cli-platform-ios@11.3.7 >      │
+│                     │ fast-xml-parser@4.5.4                                  │
+│                     │                                                        │
+│                     │ ... Found 78 paths, run `pnpm why fast-xml-parser` for │
+│                     │ more information                                       │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ More info           │ https://github.com/advisories/GHSA-fj3w-jwp8-x2g3      │
+└─────────────────────┴────────────────────────────────────────────────────────┘
+4 vulnerabilities found
+Severity: 1 low | 2 moderate | 1 high

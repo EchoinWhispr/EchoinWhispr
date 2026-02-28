@@ -109,11 +109,11 @@ export const BottomNavigation = () => {
       {/* Spacer to prevent content from hiding behind fixed nav on mobile */}
       <div className="h-16 w-full md:hidden safe-bottom" aria-hidden="true" />
       <nav 
-        className="fixed bottom-0 left-0 right-0 z-50 md:hidden glass border-t border-white/10 safe-bottom"
+        className="fixed bottom-0 left-0 right-0 z-50 md:hidden glass border-t border-white/10 safe-bottom pb-2"
         role="navigation"
         aria-label="Mobile navigation"
       >
-      <div className="flex items-center justify-around h-16 px-2">
+      <div className="flex items-center justify-around h-16 px-1 sm:px-2 gap-1 sm:gap-2">
         {navigationItems.map((item) => {
           const Icon = item.icon;
           const isActive = isActiveRoute(item.href);

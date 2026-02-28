@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Authenticate the request using Clerk
-    const { userId } = await auth();
+    const { userId, getToken } = await auth();
 
     if (!userId) {
       return NextResponse.json(
@@ -128,6 +128,13 @@ export async function POST(request: NextRequest) {
     }
 
     const convex = new ConvexHttpClient(convexUrl);
+
+    // Get the Convex auth token from Clerk and pass it to the Convex client
+    // This is critical — without this, Convex cannot authenticate the user
+    const convexToken = await getToken({ template: 'convex' });
+    if (convexToken) {
+      convex.setAuth(convexToken);
+    }
 
     // Get the current user from Convex using Clerk ID to obtain the Convex user ID
     const currentUser = await convex.query(api.users.getUserByClerkId, {

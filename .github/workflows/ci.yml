@@ -2,9 +2,9 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches: [ main, develop ]
+    branches: [main, develop]
   pull_request:
-    branches: [ main, develop ]
+    branches: [main, develop]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -137,6 +137,12 @@ jobs:
     steps:
       - name: Check all CI jobs status
         run: |
+          echo "root-lint:       ${{ needs.root-lint.result }}"
+          echo "convex-ci:       ${{ needs.convex-ci.result }}"
+          echo "web-ci:          ${{ needs.web-ci.result }}"
+          echo "react-native-ci: ${{ needs.react-native-ci.result }}"
+          echo "security-audit:  ${{ needs.security-audit.result }}"
+
           if [ "${{ needs.root-lint.result }}" = "failure" ] || \
              [ "${{ needs.convex-ci.result }}" = "failure" ] || \
              [ "${{ needs.web-ci.result }}" = "failure" ] || \

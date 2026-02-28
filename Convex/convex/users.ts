@@ -1,7 +1,8 @@
 import { v } from 'convex/values';
-import { mutation, query, internalQuery } from './_generated/server';
+import { mutation, query, internalQuery, internalMutation } from './_generated/server';
 import { Doc, Id } from './_generated/dataModel';
 import { isAdmin, isSuperAdmin } from './adminAuth';
+import { requireUser } from './auth';
 
 // Get current user or create if doesn't exist
 export const getCurrentUser = query({
@@ -22,7 +23,7 @@ export const getCurrentUser = query({
 });
 
 // Create or update user from Clerk webhook
-export const createOrUpdateUser = mutation({
+export const createOrUpdateUser = internalMutation({
   args: {
     clerkId: v.string(),
     username: v.string(),
@@ -155,6 +156,9 @@ export const searchUsers = query({
     excludeUserId: v.optional(v.id('users')),
   },
   handler: async (ctx, args) => {
+    // Ensure the caller is authenticated
+    await requireUser(ctx);
+
     // Validate input parameters
     const searchQuery = args.query.trim();
     if (searchQuery.length < 2) {
@@ -240,19 +244,7 @@ export const updateUserProfile = mutation({
     mood: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Not authenticated');
-    }
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error('User not found');
-    }
+    const user = await requireUser(ctx);
 
     // Update user table for displayName and SSD fields
     const userUpdates: any = { updatedAt: Date.now() };
@@ -463,23 +455,32 @@ export const updateUsername = mutation({
   },
 });
 
-// Check if username is available for registration
+// Check if username is available for registration or username change request
 export const checkUsernameAvailability = query({
   args: { username: v.string() },
   handler: async (ctx, args) => {
-    // Validate username format (3-20 chars, lowercase letters, numbers, underscores only)
     const usernameRegex = /^[a-z0-9_]{3,20}$/;
     if (!usernameRegex.test(args.username)) {
       return false;
     }
 
-    // Check if username already exists
+    // Check if username already exists in users table
     const existingUser = await ctx.db
       .query('users')
       .withIndex('by_username', q => q.eq('username', args.username))
       .first();
+    if (existingUser) return false;
 
-    return !existingUser; // Return true if username is available (no existing user)
+    // Soft-reserve: check if there's a pending username change request for this name
+    const pendingRequest = await ctx.db
+      .query('usernameChangeRequests')
+      .withIndex('by_requested_username_status', q => 
+        q.eq('requestedUsername', args.username).eq('status', 'pending')
+      )
+      .first();
+    if (pendingRequest) return false;
+
+    return true;
   },
 });
 
@@ -511,19 +512,7 @@ export const registerPushToken = mutation({
     token: v.string(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Not authenticated');
-    }
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error('User not found');
-    }
+    const user = await requireUser(ctx);
 
     await ctx.db.patch(user._id, {
       pushNotificationToken: args.token,
@@ -579,19 +568,7 @@ export const updatePreferences = mutation({
     themePreference: v.optional(v.union(v.literal('light'), v.literal('dark'), v.literal('system'))),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Not authenticated');
-    }
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error('User not found');
-    }
+    const user = await requireUser(ctx);
 
     const updates: any = { updatedAt: Date.now() };
     if (args.readReceiptsEnabled !== undefined) {
@@ -639,19 +616,7 @@ export const pinConversation = mutation({
     conversationId: v.id('conversations'),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Not authenticated');
-    }
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error('User not found');
-    }
+    const user = await requireUser(ctx);
 
     const currentPinned = user.pinnedConversationIds || [];
     
@@ -672,19 +637,7 @@ export const unpinConversation = mutation({
     conversationId: v.id('conversations'),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Not authenticated');
-    }
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error('User not found');
-    }
+    const user = await requireUser(ctx);
 
     const pinnedIds = (user.pinnedConversationIds || []).filter(
       id => id !== args.conversationId
@@ -788,8 +741,9 @@ export const softDeleteUser = mutation({
     // Delete pending friend requests (both directions)
     const sentRequests = await ctx.db
       .query('friends')
-      .withIndex('by_user_id', q => q.eq('userId', userToDelete._id))
-      .filter(q => q.eq(q.field('status'), 'pending'))
+      .withIndex('by_user_status', q => 
+        q.eq('userId', userToDelete._id).eq('status', 'pending')
+      )
       .collect();
     
     for (const request of sentRequests) {
@@ -798,8 +752,9 @@ export const softDeleteUser = mutation({
 
     const receivedRequests = await ctx.db
       .query('friends')
-      .withIndex('by_friend_id', q => q.eq('friendId', userToDelete._id))
-      .filter(q => q.eq(q.field('status'), 'pending'))
+      .withIndex('by_friend_status', q => 
+        q.eq('friendId', userToDelete._id).eq('status', 'pending')
+      )
       .collect();
     
     for (const request of receivedRequests) {
@@ -834,5 +789,244 @@ export const isCurrentUserDeleted = query({
       .first();
 
     return user?.isDeleted ?? false;
+  },
+});
+
+// ============================================================
+// USERNAME CHANGE REQUESTS
+// ============================================================
+
+const USERNAME_REGEX = /^[a-z0-9_]{3,20}$/;
+
+/**
+ * User requests a username change. Creates a pending request for admin review.
+ */
+export const requestUsernameChange = mutation({
+  args: {
+    requestedUsername: v.string(),
+  },
+  handler: async (ctx, args) => {
+    const user = await requireUser(ctx);
+
+    const normalizedUsername = args.requestedUsername.trim().toLowerCase();
+    if (!USERNAME_REGEX.test(normalizedUsername)) {
+      throw new Error('Username must be 3–20 chars: lowercase letters, numbers, underscores only');
+    }
+
+    if (user.username === normalizedUsername) {
+      throw new Error('That is already your current username');
+    }
+
+    // Check no one else has it
+    const existingUser = await ctx.db
+      .query('users')
+      .withIndex('by_username', q => q.eq('username', normalizedUsername))
+      .first();
+    if (existingUser) throw new Error('Username is already taken');
+
+    // Check no other pending request has claimed this username
+    const conflictingRequest = await ctx.db
+      .query('usernameChangeRequests')
+      .withIndex('by_requested_username_status', q => 
+        q.eq('requestedUsername', normalizedUsername).eq('status', 'pending')
+      )
+      .first();
+    if (conflictingRequest) throw new Error('Someone else is already requesting that username');
+
+    // Cancel any existing pending request from this user
+    const existingRequest = await ctx.db
+      .query('usernameChangeRequests')
+      .withIndex('by_user_id', q => q.eq('userId', user._id))
+      .filter(q => q.eq(q.field('status'), 'pending'))
+      .first();
+    if (existingRequest) {
+      await ctx.db.patch(existingRequest._id, { status: 'rejected', updatedAt: Date.now() });
+    }
+
+    const now = Date.now();
+    const requestId = await ctx.db.insert('usernameChangeRequests', {
+      userId: user._id,
+      currentUsername: user.username,
+      requestedUsername: normalizedUsername,
+      status: 'pending',
+      createdAt: now,
+      updatedAt: now,
+    });
+
+    return { success: true, requestId };
+  },
+});
+
+/**
+ * Get the current user's most recent username change request.
+ */
+export const getMyUsernameChangeRequest = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return null;
+
+    const user = await ctx.db
+      .query('users')
+      .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
+      .first();
+    if (!user) return null;
+
+    const request = await ctx.db
+      .query('usernameChangeRequests')
+      .withIndex('by_user_id', q => q.eq('userId', user._id))
+      .order('desc')
+      .first();
+
+    return request;
+  },
+});
+
+/**
+ * Admin: Get all pending username change requests.
+ */
+export const getPendingUsernameChangeRequests = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) return [];
+
+    const { isAdmin: checkIsAdmin } = await import('./adminAuth');
+    const isAdminUser = await checkIsAdmin(ctx, identity.subject);
+    if (!isAdminUser) return [];
+
+    const requests = await ctx.db
+      .query('usernameChangeRequests')
+      .withIndex('by_status', q => q.eq('status', 'pending'))
+      .order('desc')
+      .collect();
+
+    return await Promise.all(
+      requests.map(async (req) => {
+        const user = await ctx.db.get(req.userId);
+        return {
+          ...req,
+          userDisplayName: user?.displayName || user?.username || 'Unknown',
+          userEmail: user?.email || '',
+        };
+      })
+    );
+  },
+});
+
+/**
+ * Admin: Approve a username change request — atomically updates the user's username.
+ */
+export const approveUsernameChange = mutation({
+  args: {
+    requestId: v.id('usernameChangeRequests'),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error('Not authenticated');
+
+    const { isAdmin: checkIsAdmin } = await import('./adminAuth');
+    const isAdminUser = await checkIsAdmin(ctx, identity.subject);
+    if (!isAdminUser) throw new Error('Unauthorized: Admin access required');
+
+    const request = await ctx.db.get(args.requestId);
+    if (!request) throw new Error('Request not found');
+    if (request.status !== 'pending') throw new Error('Request already processed');
+
+    // Check the username is still available
+    const conflictingUser = await ctx.db
+      .query('users')
+      .withIndex('by_username', q => q.eq('username', request.requestedUsername))
+      .first();
+    if (conflictingUser && conflictingUser._id !== request.userId) {
+      throw new Error('Username has since been taken — cannot approve');
+    }
+
+    const reviewerUser = await ctx.db
+      .query('users')
+      .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
+      .first();
+
+    const now = Date.now();
+
+    // Update the user's username
+    const user = await ctx.db.get(request.userId);
+    if (!user) throw new Error('User not found');
+
+    await ctx.db.patch(user._id, {
+      username: request.requestedUsername,
+      // Also update displayName if it was set to the old username
+      ...(user.displayName === request.currentUsername ? { displayName: request.requestedUsername } : {}),
+      updatedAt: now,
+    });
+
+    // Mark request as approved
+    await ctx.db.patch(args.requestId, {
+      status: 'approved',
+      reviewedBy: reviewerUser?._id,
+      updatedAt: now,
+    });
+
+    // Send an in-app notification to the user
+    await ctx.db.insert('notifications', {
+      userId: user._id,
+      type: 'system',
+      title: 'Username Changed',
+      message: `Your username has been changed to @${request.requestedUsername}`,
+      read: false,
+      createdAt: now,
+    });
+
+    return { success: true };
+  },
+});
+
+/**
+ * Admin: Reject a username change request.
+ */
+export const rejectUsernameChange = mutation({
+  args: {
+    requestId: v.id('usernameChangeRequests'),
+    note: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) throw new Error('Not authenticated');
+
+    const { isAdmin: checkIsAdmin } = await import('./adminAuth');
+    const isAdminUser = await checkIsAdmin(ctx, identity.subject);
+    if (!isAdminUser) throw new Error('Unauthorized: Admin access required');
+
+    const request = await ctx.db.get(args.requestId);
+    if (!request) throw new Error('Request not found');
+    if (request.status !== 'pending') throw new Error('Request already processed');
+
+    const reviewerUser = await ctx.db
+      .query('users')
+      .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
+      .first();
+
+    const now = Date.now();
+
+    await ctx.db.patch(args.requestId, {
+      status: 'rejected',
+      reviewedBy: reviewerUser?._id,
+      reviewNote: args.note,
+      updatedAt: now,
+    });
+
+    // Notify user
+    await ctx.db.insert('notifications', {
+      userId: request.userId,
+      type: 'system',
+      title: 'Username Change Request Declined',
+      message: args.note
+        ? `Your request for @${request.requestedUsername} was declined: ${args.note}`
+        : `Your request for @${request.requestedUsername} was declined by an admin.`,
+      read: false,
+      createdAt: now,
+    });
+
+    return { success: true };
   },
 });

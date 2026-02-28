@@ -131,7 +131,7 @@ export default function ProfilePage() {
 
   if (!isProfileEditingEnabled) {
     return (
-      <div className="min-h-screen pt-20 pb-10 px-4 md:px-8 lg:px-12 flex justify-center items-center">
+      <div className="min-h-[100dvh] pt-20 pb-10 px-4 md:px-8 lg:px-12 flex justify-center items-center">
         <div className="relative w-full max-w-md">
           <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-accent/10 to-transparent rounded-3xl blur-3xl" />
           <div className="relative glass-card rounded-3xl p-8 text-center">
@@ -159,7 +159,7 @@ export default function ProfilePage() {
 
   if (!isLoaded || !currentUser) {
     return (
-      <div className="min-h-screen pt-20 pb-10 px-4 md:px-8 lg:px-12 flex justify-center">
+      <div className="min-h-[100dvh] pt-20 pb-10 px-4 md:px-8 lg:px-12 flex justify-center">
         <div className="w-full max-w-4xl space-y-6">
           <div className="glass-card rounded-3xl animate-pulse">
             <div className="flex items-center gap-4">
@@ -178,7 +178,7 @@ export default function ProfilePage() {
   const profileCompletion = getProfileCompleteness();
 
   return (
-    <div className="min-h-screen pt-20 pb-10 px-4 md:px-8 lg:px-12 flex justify-center">
+    <div className="min-h-[100dvh] pt-20 pb-24 md:pb-10 px-4 md:px-8 lg:px-12 flex justify-center">
       <div className="w-full max-w-4xl space-y-6">
         
         <div className="relative">
@@ -219,13 +219,13 @@ export default function ProfilePage() {
                   )}
                 </div>
 
-                <div className="flex-1 text-center md:text-left pt-4 md:pt-0">
-                  <div className="relative inline-block">
-                    <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-white via-white to-white/80 bg-clip-text text-transparent">
+                  <div className="flex-1 text-center md:text-left pt-4 md:pt-0 min-w-0">
+                  <div className="relative inline-block max-w-full">
+                    <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-white via-white to-white/80 bg-clip-text text-transparent truncate">
                       {currentUser.displayName || clerkUser?.firstName || currentUser.username}
                     </h1>
                   </div>
-                  <p className="text-muted-foreground text-lg mt-1">@{currentUser.username}</p>
+                  <p className="text-muted-foreground text-lg mt-1 truncate">@{currentUser.username}</p>
                   
                   {currentUser.career && (
                     <div className="flex items-center justify-center md:justify-start gap-2 mt-3 text-sm text-muted-foreground">
@@ -276,7 +276,7 @@ export default function ProfilePage() {
                       Edit
                     </Button>
                   ) : (
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <Button 
                         size="sm" 
                         onClick={handleSave} 
@@ -337,9 +337,9 @@ export default function ProfilePage() {
           </Card>
         </div>
 
-        <div className="grid grid-cols-3 gap-3 md:gap-4">
+        <div className="grid grid-cols-3 gap-2 sm:gap-3 md:gap-4">
           <Link href="/inbox" className="group">
-            <Card className="glass-card rounded-2xl p-4 text-center hover:border-primary/30 transition-all duration-300 cursor-pointer group-hover:scale-[1.02] group-hover:shadow-lg group-hover:shadow-primary/10 relative overflow-hidden">
+            <Card className="glass-card rounded-2xl p-3 sm:p-4 text-center hover:border-primary/30 transition-all duration-300 cursor-pointer group-hover:scale-[1.02] group-hover:shadow-lg group-hover:shadow-primary/10 relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-primary/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
               <div className="relative">
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-accent flex items-center justify-center mx-auto mb-3 shadow-lg shadow-primary/30 group-hover:shadow-primary/50 group-hover:scale-110 transition-all duration-300">

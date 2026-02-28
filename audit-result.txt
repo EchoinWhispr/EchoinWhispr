@@ -1,0 +1,589 @@
+┌─────────────────────┬────────────────────────────────────────────────────────┐
+│ critical            │ fast-xml-parser has an entity encoding bypass via      │
+│                     │ regex injection in DOCTYPE entity names                │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Package             │ fast-xml-parser                                        │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Vulnerable versions │ >=4.1.3 <4.5.4                                         │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Patched versions    │ >=4.5.4                                                │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Paths               │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-constants@18.0.9 >      │
+│                     │ react-native@0.72.6 >                                  │
+│                     │ @react-native-community/cli@11.3.7 >                   │
+│                     │ @react-native-community/cli-doctor@11.3.7 >            │
+│                     │ @react-native-community/cli-platform-ios@11.3.7 >      │
+│                     │ fast-xml-parser@4.5.3                                  │
+│                     │                                                        │
+│                     │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-constants@18.0.9 >      │
+│                     │ react-native@0.72.6 >                                  │
+│                     │ @react-native-community/cli-platform-ios@11.3.7 >      │
+│                     │ fast-xml-parser@4.5.3                                  │
+│                     │                                                        │
+│                     │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-linking@8.0.8 >         │
+│                     │ expo-constants@18.0.9 > react-native@0.72.6 >          │
+│                     │ @react-native-community/cli@11.3.7 >                   │
+│                     │ @react-native-community/cli-doctor@11.3.7 >            │
+│                     │ @react-native-community/cli-platform-ios@11.3.7 >      │
+│                     │ fast-xml-parser@4.5.3                                  │
+│                     │                                                        │
+│                     │ ... Found 78 paths, run `pnpm why fast-xml-parser` for │
+│                     │ more information                                       │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ More info           │ https://github.com/advisories/GHSA-m7jm-9gc2-mpf2      │
+└─────────────────────┴────────────────────────────────────────────────────────┘
+┌─────────────────────┬────────────────────────────────────────────────────────┐
+│ high                │ ip SSRF improper categorization in isPublic            │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Package             │ ip                                                     │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Vulnerable versions │ <=2.0.1                                                │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Patched versions    │ <0.0.0                                                 │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Paths               │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-constants@18.0.9 >      │
+│                     │ react-native@0.72.6 >                                  │
+│                     │ @react-native-community/cli@11.3.7 >                   │
+│                     │ @react-native-community/cli-doctor@11.3.7 > ip@1.1.9   │
+│                     │                                                        │
+│                     │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-constants@18.0.9 >      │
+│                     │ react-native@0.72.6 >                                  │
+│                     │ @react-native-community/cli@11.3.7 >                   │
+│                     │ @react-native-community/cli-hermes@11.3.7 > ip@1.1.9   │
+│                     │                                                        │
+│                     │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-linking@8.0.8 >         │
+│                     │ expo-constants@18.0.9 > react-native@0.72.6 >          │
+│                     │ @react-native-community/cli@11.3.7 >                   │
+│                     │ @react-native-community/cli-doctor@11.3.7 > ip@1.1.9   │
+│                     │                                                        │
+│                     │ ... Found 78 paths, run `pnpm why ip` for more         │
+│                     │ information                                            │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ More info           │ https://github.com/advisories/GHSA-2p57-rm9w-gvfp      │
+└─────────────────────┴────────────────────────────────────────────────────────┘
+┌─────────────────────┬────────────────────────────────────────────────────────┐
+│ high                │ Next Vulnerable to Denial of Service with Server       │
+│                     │ Components                                             │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Package             │ next                                                   │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Vulnerable versions │ >=13.3.0 <14.2.34                                      │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Patched versions    │ >=14.2.34                                              │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Paths               │ Web > @clerk/nextjs@6.36.6 > next@14.2.33              │
+│                     │                                                        │
+│                     │ Web > next@14.2.33                                     │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ More info           │ https://github.com/advisories/GHSA-mwv6-3258-q52c      │
+└─────────────────────┴────────────────────────────────────────────────────────┘
+┌─────────────────────┬────────────────────────────────────────────────────────┐
+│ high                │ Next has a Denial of Service with Server Components -  │
+│                     │ Incomplete Fix Follow-Up                               │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Package             │ next                                                   │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Vulnerable versions │ >=13.3.1-canary.0 <14.2.35                             │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Patched versions    │ >=14.2.35                                              │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Paths               │ Web > @clerk/nextjs@6.36.6 > next@14.2.33              │
+│                     │                                                        │
+│                     │ Web > next@14.2.33                                     │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ More info           │ https://github.com/advisories/GHSA-5j59-xgg2-r9c4      │
+└─────────────────────┴────────────────────────────────────────────────────────┘
+┌─────────────────────┬────────────────────────────────────────────────────────┐
+│ high                │ Race Condition in node-tar Path Reservations via       │
+│                     │ Unicode Ligature Collisions on macOS APFS              │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Package             │ tar                                                    │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Vulnerable versions │ <=7.5.3                                                │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Patched versions    │ >=7.5.4                                                │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Paths               │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-application@7.0.7 >     │
+│                     │ expo@49.0.23 > @expo/cli@0.10.17 > cacache@15.3.0 >    │
+│                     │ tar@6.2.1                                              │
+│                     │                                                        │
+│                     │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-application@7.0.7 >     │
+│                     │ expo@49.0.23 > @expo/cli@0.10.17 > tar@6.2.1           │
+│                     │                                                        │
+│                     │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-constants@18.0.9 >      │
+│                     │ expo@49.0.23 > @expo/cli@0.10.17 > cacache@15.3.0 >    │
+│                     │ tar@6.2.1                                              │
+│                     │                                                        │
+│                     │ ... Found 24 paths, run `pnpm why tar` for more        │
+│                     │ information                                            │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ More info           │ https://github.com/advisories/GHSA-r6q2-hw4h-h46w      │
+└─────────────────────┴────────────────────────────────────────────────────────┘
+┌─────────────────────┬────────────────────────────────────────────────────────┐
+│ high                │ Next.js HTTP request deserialization can lead to DoS   │
+│                     │ when using insecure React Server Components            │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Package             │ next                                                   │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Vulnerable versions │ >=13.0.0 <15.0.8                                       │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Patched versions    │ >=15.0.8                                               │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Paths               │ Web > @clerk/nextjs@6.36.6 > next@14.2.33              │
+│                     │                                                        │
+│                     │ Web > next@14.2.33                                     │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ More info           │ https://github.com/advisories/GHSA-h25m-26qc-wcjf      │
+└─────────────────────┴────────────────────────────────────────────────────────┘
+┌─────────────────────┬────────────────────────────────────────────────────────┐
+│ high                │ node-tar Vulnerable to Arbitrary File                  │
+│                     │ Creation/Overwrite via Hardlink Path Traversal         │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Package             │ tar                                                    │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Vulnerable versions │ <7.5.7                                                 │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Patched versions    │ >=7.5.7                                                │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Paths               │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-application@7.0.7 >     │
+│                     │ expo@49.0.23 > @expo/cli@0.10.17 > cacache@15.3.0 >    │
+│                     │ tar@6.2.1                                              │
+│                     │                                                        │
+│                     │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-application@7.0.7 >     │
+│                     │ expo@49.0.23 > @expo/cli@0.10.17 > tar@6.2.1           │
+│                     │                                                        │
+│                     │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-constants@18.0.9 >      │
+│                     │ expo@49.0.23 > @expo/cli@0.10.17 > cacache@15.3.0 >    │
+│                     │ tar@6.2.1                                              │
+│                     │                                                        │
+│                     │ ... Found 24 paths, run `pnpm why tar` for more        │
+│                     │ information                                            │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ More info           │ https://github.com/advisories/GHSA-34x7-hfp2-rc4v      │
+└─────────────────────┴────────────────────────────────────────────────────────┘
+┌─────────────────────┬────────────────────────────────────────────────────────┐
+│ high                │ semver vulnerable to Regular Expression Denial of      │
+│                     │ Service                                                │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Package             │ semver                                                 │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Vulnerable versions │ >=7.0.0 <7.5.2                                         │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Patched versions    │ >=7.5.2                                                │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Paths               │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-application@7.0.7 >     │
+│                     │ expo@49.0.23 > @expo/cli@0.10.17 >                     │
+│                     │ @expo/prebuild-config@6.2.6 > @expo/image-utils@0.3.22 │
+│                     │ > semver@7.3.2                                         │
+│                     │                                                        │
+│                     │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-constants@18.0.9 >      │
+│                     │ expo@49.0.23 > @expo/cli@0.10.17 >                     │
+│                     │ @expo/prebuild-config@6.2.6 > @expo/image-utils@0.3.22 │
+│                     │ > semver@7.3.2                                         │
+│                     │                                                        │
+│                     │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-crypto@15.0.7 >         │
+│                     │ expo@49.0.23 > @expo/cli@0.10.17 >                     │
+│                     │ @expo/prebuild-config@6.2.6 > @expo/image-utils@0.3.22 │
+│                     │ > semver@7.3.2                                         │
+│                     │                                                        │
+│                     │ ... Found 13 paths, run `pnpm why semver` for more     │
+│                     │ information                                            │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ More info           │ https://github.com/advisories/GHSA-c2qf-rxjj-qqgw      │
+└─────────────────────┴────────────────────────────────────────────────────────┘
+┌─────────────────────┬────────────────────────────────────────────────────────┐
+│ high                │ node-tar is Vulnerable to Arbitrary File Overwrite and │
+│                     │ Symlink Poisoning via Insufficient Path Sanitization   │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Package             │ tar                                                    │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Vulnerable versions │ <=7.5.2                                                │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Patched versions    │ >=7.5.3                                                │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Paths               │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-application@7.0.7 >     │
+│                     │ expo@49.0.23 > @expo/cli@0.10.17 > cacache@15.3.0 >    │
+│                     │ tar@6.2.1                                              │
+│                     │                                                        │
+│                     │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-application@7.0.7 >     │
+│                     │ expo@49.0.23 > @expo/cli@0.10.17 > tar@6.2.1           │
+│                     │                                                        │
+│                     │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-constants@18.0.9 >      │
+│                     │ expo@49.0.23 > @expo/cli@0.10.17 > cacache@15.3.0 >    │
+│                     │ tar@6.2.1                                              │
+│                     │                                                        │
+│                     │ ... Found 24 paths, run `pnpm why tar` for more        │
+│                     │ information                                            │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ More info           │ https://github.com/advisories/GHSA-8qq5-rm4j-mr97      │
+└─────────────────────┴────────────────────────────────────────────────────────┘
+┌─────────────────────┬────────────────────────────────────────────────────────┐
+│ high                │ Arbitrary File Read/Write via Hardlink Target Escape   │
+│                     │ Through Symlink Chain in node-tar Extraction           │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Package             │ tar                                                    │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Vulnerable versions │ <7.5.8                                                 │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Patched versions    │ >=7.5.8                                                │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Paths               │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-application@7.0.7 >     │
+│                     │ expo@49.0.23 > @expo/cli@0.10.17 > cacache@15.3.0 >    │
+│                     │ tar@6.2.1                                              │
+│                     │                                                        │
+│                     │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-application@7.0.7 >     │
+│                     │ expo@49.0.23 > @expo/cli@0.10.17 > tar@6.2.1           │
+│                     │                                                        │
+│                     │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-constants@18.0.9 >      │
+│                     │ expo@49.0.23 > @expo/cli@0.10.17 > cacache@15.3.0 >    │
+│                     │ tar@6.2.1                                              │
+│                     │                                                        │
+│                     │ ... Found 24 paths, run `pnpm why tar` for more        │
+│                     │ information                                            │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ More info           │ https://github.com/advisories/GHSA-83g3-92jg-28cx      │
+└─────────────────────┴────────────────────────────────────────────────────────┘
+┌─────────────────────┬────────────────────────────────────────────────────────┐
+│ high                │ minimatch has a ReDoS via repeated wildcards with      │
+│                     │ non-matching literal in pattern                        │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Package             │ minimatch                                              │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Vulnerable versions │ <3.1.3                                                 │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Patched versions    │ >=3.1.3                                                │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Paths               │ . > @typescript-eslint/eslint-plugin@6.21.0 >          │
+│                     │ @typescript-eslint/parser@6.21.0 > eslint@8.57.1 >     │
+│                     │ @eslint/eslintrc@2.1.4 > minimatch@3.1.2               │
+│                     │                                                        │
+│                     │ . > @typescript-eslint/eslint-plugin@6.21.0 >          │
+│                     │ @typescript-eslint/parser@6.21.0 > eslint@8.57.1 >     │
+│                     │ @humanwhocodes/config-array@0.13.0 > minimatch@3.1.2   │
+│                     │                                                        │
+│                     │ . > @typescript-eslint/eslint-plugin@6.21.0 >          │
+│                     │ @typescript-eslint/parser@6.21.0 > eslint@8.57.1 >     │
+│                     │ minimatch@3.1.2                                        │
+│                     │                                                        │
+│                     │ ... Found 326 paths, run `pnpm why minimatch` for more │
+│                     │ information                                            │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ More info           │ https://github.com/advisories/GHSA-3ppc-4f35-3m26      │
+└─────────────────────┴────────────────────────────────────────────────────────┘
+┌─────────────────────┬────────────────────────────────────────────────────────┐
+│ high                │ minimatch has a ReDoS via repeated wildcards with      │
+│                     │ non-matching literal in pattern                        │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Package             │ minimatch                                              │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Vulnerable versions │ >=9.0.0 <9.0.6                                         │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Patched versions    │ >=9.0.6                                                │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Paths               │ . > @typescript-eslint/eslint-plugin@6.21.0 >          │
+│                     │ @typescript-eslint/parser@6.21.0 >                     │
+│                     │ @typescript-eslint/typescript-estree@6.21.0 >          │
+│                     │ minimatch@9.0.3                                        │
+│                     │                                                        │
+│                     │ . > @typescript-eslint/eslint-plugin@6.21.0 >          │
+│                     │ @typescript-eslint/type-utils@6.21.0 >                 │
+│                     │ @typescript-eslint/typescript-estree@6.21.0 >          │
+│                     │ minimatch@9.0.3                                        │
+│                     │                                                        │
+│                     │ . > @typescript-eslint/eslint-plugin@6.21.0 >          │
+│                     │ @typescript-eslint/type-utils@6.21.0 >                 │
+│                     │ @typescript-eslint/utils@6.21.0 >                      │
+│                     │ @typescript-eslint/typescript-estree@6.21.0 >          │
+│                     │ minimatch@9.0.3                                        │
+│                     │                                                        │
+│                     │ ... Found 1211 paths, run `pnpm why minimatch` for     │
+│                     │ more information                                       │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ More info           │ https://github.com/advisories/GHSA-3ppc-4f35-3m26      │
+└─────────────────────┴────────────────────────────────────────────────────────┘
+┌─────────────────────┬────────────────────────────────────────────────────────┐
+│ high                │ minimatch has ReDoS: matchOne() combinatorial          │
+│                     │ backtracking via multiple non-adjacent GLOBSTAR        │
+│                     │ segments                                               │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Package             │ minimatch                                              │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Vulnerable versions │ <3.1.3                                                 │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Patched versions    │ >=3.1.3                                                │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Paths               │ . > @typescript-eslint/eslint-plugin@6.21.0 >          │
+│                     │ @typescript-eslint/parser@6.21.0 > eslint@8.57.1 >     │
+│                     │ @eslint/eslintrc@2.1.4 > minimatch@3.1.2               │
+│                     │                                                        │
+│                     │ . > @typescript-eslint/eslint-plugin@6.21.0 >          │
+│                     │ @typescript-eslint/parser@6.21.0 > eslint@8.57.1 >     │
+│                     │ @humanwhocodes/config-array@0.13.0 > minimatch@3.1.2   │
+│                     │                                                        │
+│                     │ . > @typescript-eslint/eslint-plugin@6.21.0 >          │
+│                     │ @typescript-eslint/parser@6.21.0 > eslint@8.57.1 >     │
+│                     │ minimatch@3.1.2                                        │
+│                     │                                                        │
+│                     │ ... Found 326 paths, run `pnpm why minimatch` for more │
+│                     │ information                                            │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ More info           │ https://github.com/advisories/GHSA-7r86-cg39-jmmj      │
+└─────────────────────┴────────────────────────────────────────────────────────┘
+┌─────────────────────┬────────────────────────────────────────────────────────┐
+│ high                │ minimatch has ReDoS: matchOne() combinatorial          │
+│                     │ backtracking via multiple non-adjacent GLOBSTAR        │
+│                     │ segments                                               │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Package             │ minimatch                                              │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Vulnerable versions │ >=9.0.0 <9.0.7                                         │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Patched versions    │ >=9.0.7                                                │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Paths               │ . > @typescript-eslint/eslint-plugin@6.21.0 >          │
+│                     │ @typescript-eslint/parser@6.21.0 >                     │
+│                     │ @typescript-eslint/typescript-estree@6.21.0 >          │
+│                     │ minimatch@9.0.3                                        │
+│                     │                                                        │
+│                     │ . > @typescript-eslint/eslint-plugin@6.21.0 >          │
+│                     │ @typescript-eslint/type-utils@6.21.0 >                 │
+│                     │ @typescript-eslint/typescript-estree@6.21.0 >          │
+│                     │ minimatch@9.0.3                                        │
+│                     │                                                        │
+│                     │ . > @typescript-eslint/eslint-plugin@6.21.0 >          │
+│                     │ @typescript-eslint/type-utils@6.21.0 >                 │
+│                     │ @typescript-eslint/utils@6.21.0 >                      │
+│                     │ @typescript-eslint/typescript-estree@6.21.0 >          │
+│                     │ minimatch@9.0.3                                        │
+│                     │                                                        │
+│                     │ ... Found 1211 paths, run `pnpm why minimatch` for     │
+│                     │ more information                                       │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ More info           │ https://github.com/advisories/GHSA-7r86-cg39-jmmj      │
+└─────────────────────┴────────────────────────────────────────────────────────┘
+┌─────────────────────┬────────────────────────────────────────────────────────┐
+│ high                │ minimatch ReDoS: nested *() extglobs generate          │
+│                     │ catastrophically backtracking regular expressions      │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Package             │ minimatch                                              │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Vulnerable versions │ <3.1.4                                                 │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Patched versions    │ >=3.1.4                                                │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Paths               │ . > @typescript-eslint/eslint-plugin@6.21.0 >          │
+│                     │ @typescript-eslint/parser@6.21.0 > eslint@8.57.1 >     │
+│                     │ @eslint/eslintrc@2.1.4 > minimatch@3.1.2               │
+│                     │                                                        │
+│                     │ . > @typescript-eslint/eslint-plugin@6.21.0 >          │
+│                     │ @typescript-eslint/parser@6.21.0 > eslint@8.57.1 >     │
+│                     │ @humanwhocodes/config-array@0.13.0 > minimatch@3.1.2   │
+│                     │                                                        │
+│                     │ . > @typescript-eslint/eslint-plugin@6.21.0 >          │
+│                     │ @typescript-eslint/parser@6.21.0 > eslint@8.57.1 >     │
+│                     │ minimatch@3.1.2                                        │
+│                     │                                                        │
+│                     │ ... Found 326 paths, run `pnpm why minimatch` for more │
+│                     │ information                                            │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ More info           │ https://github.com/advisories/GHSA-23c5-xmqv-rm74      │
+└─────────────────────┴────────────────────────────────────────────────────────┘
+┌─────────────────────┬────────────────────────────────────────────────────────┐
+│ high                │ minimatch ReDoS: nested *() extglobs generate          │
+│                     │ catastrophically backtracking regular expressions      │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Package             │ minimatch                                              │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Vulnerable versions │ >=9.0.0 <9.0.7                                         │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Patched versions    │ >=9.0.7                                                │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Paths               │ . > @typescript-eslint/eslint-plugin@6.21.0 >          │
+│                     │ @typescript-eslint/parser@6.21.0 >                     │
+│                     │ @typescript-eslint/typescript-estree@6.21.0 >          │
+│                     │ minimatch@9.0.3                                        │
+│                     │                                                        │
+│                     │ . > @typescript-eslint/eslint-plugin@6.21.0 >          │
+│                     │ @typescript-eslint/type-utils@6.21.0 >                 │
+│                     │ @typescript-eslint/typescript-estree@6.21.0 >          │
+│                     │ minimatch@9.0.3                                        │
+│                     │                                                        │
+│                     │ . > @typescript-eslint/eslint-plugin@6.21.0 >          │
+│                     │ @typescript-eslint/type-utils@6.21.0 >                 │
+│                     │ @typescript-eslint/utils@6.21.0 >                      │
+│                     │ @typescript-eslint/typescript-estree@6.21.0 >          │
+│                     │ minimatch@9.0.3                                        │
+│                     │                                                        │
+│                     │ ... Found 1211 paths, run `pnpm why minimatch` for     │
+│                     │ more information                                       │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ More info           │ https://github.com/advisories/GHSA-23c5-xmqv-rm74      │
+└─────────────────────┴────────────────────────────────────────────────────────┘
+┌─────────────────────┬────────────────────────────────────────────────────────┐
+│ high                │ fast-xml-parser affected by DoS through entity         │
+│                     │ expansion in DOCTYPE (no expansion limit)              │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Package             │ fast-xml-parser                                        │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Vulnerable versions │ >=4.1.3 <4.5.4                                         │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Patched versions    │ >=4.5.4                                                │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Paths               │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-constants@18.0.9 >      │
+│                     │ react-native@0.72.6 >                                  │
+│                     │ @react-native-community/cli@11.3.7 >                   │
+│                     │ @react-native-community/cli-doctor@11.3.7 >            │
+│                     │ @react-native-community/cli-platform-ios@11.3.7 >      │
+│                     │ fast-xml-parser@4.5.3                                  │
+│                     │                                                        │
+│                     │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-constants@18.0.9 >      │
+│                     │ react-native@0.72.6 >                                  │
+│                     │ @react-native-community/cli-platform-ios@11.3.7 >      │
+│                     │ fast-xml-parser@4.5.3                                  │
+│                     │                                                        │
+│                     │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-linking@8.0.8 >         │
+│                     │ expo-constants@18.0.9 > react-native@0.72.6 >          │
+│                     │ @react-native-community/cli@11.3.7 >                   │
+│                     │ @react-native-community/cli-doctor@11.3.7 >            │
+│                     │ @react-native-community/cli-platform-ios@11.3.7 >      │
+│                     │ fast-xml-parser@4.5.3                                  │
+│                     │                                                        │
+│                     │ ... Found 78 paths, run `pnpm why fast-xml-parser` for │
+│                     │ more information                                       │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ More info           │ https://github.com/advisories/GHSA-jmr7-xgp7-cmfj      │
+└─────────────────────┴────────────────────────────────────────────────────────┘
+┌─────────────────────┬────────────────────────────────────────────────────────┐
+│ moderate            │ Next.js self-hosted applications vulnerable to DoS via │
+│                     │ Image Optimizer remotePatterns configuration           │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Package             │ next                                                   │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Vulnerable versions │ >=10.0.0 <15.5.10                                      │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Patched versions    │ >=15.5.10                                              │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Paths               │ Web > @clerk/nextjs@6.36.6 > next@14.2.33              │
+│                     │                                                        │
+│                     │ Web > next@14.2.33                                     │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ More info           │ https://github.com/advisories/GHSA-9g9p-9gw9-jx7f      │
+└─────────────────────┴────────────────────────────────────────────────────────┘
+┌─────────────────────┬────────────────────────────────────────────────────────┐
+│ moderate            │ js-yaml has prototype pollution in merge (<<)          │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Package             │ js-yaml                                                │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Vulnerable versions │ <3.14.2                                                │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Patched versions    │ >=3.14.2                                               │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Paths               │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-application@7.0.7 >     │
+│                     │ expo@49.0.23 > @expo/cli@0.10.17 >                     │
+│                     │ @expo/package-manager@1.1.2 > js-yaml@3.14.1           │
+│                     │                                                        │
+│                     │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-application@7.0.7 >     │
+│                     │ expo@49.0.23 > @expo/cli@0.10.17 > js-yaml@3.14.1      │
+│                     │                                                        │
+│                     │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-constants@18.0.9 >      │
+│                     │ expo@49.0.23 > @expo/cli@0.10.17 >                     │
+│                     │ @expo/package-manager@1.1.2 > js-yaml@3.14.1           │
+│                     │                                                        │
+│                     │ ... Found 246 paths, run `pnpm why js-yaml` for more   │
+│                     │ information                                            │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ More info           │ https://github.com/advisories/GHSA-mh29-5h37-fv8m      │
+└─────────────────────┴────────────────────────────────────────────────────────┘
+┌─────────────────────┬────────────────────────────────────────────────────────┐
+│ moderate            │ js-yaml has prototype pollution in merge (<<)          │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Package             │ js-yaml                                                │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Vulnerable versions │ >=4.0.0 <4.1.1                                         │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Patched versions    │ >=4.1.1                                                │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Paths               │ . > @typescript-eslint/eslint-plugin@6.21.0 >          │
+│                     │ @typescript-eslint/parser@6.21.0 > eslint@8.57.1 >     │
+│                     │ @eslint/eslintrc@2.1.4 > js-yaml@4.1.0                 │
+│                     │                                                        │
+│                     │ . > @typescript-eslint/eslint-plugin@6.21.0 >          │
+│                     │ @typescript-eslint/parser@6.21.0 > eslint@8.57.1 >     │
+│                     │ js-yaml@4.1.0                                          │
+│                     │                                                        │
+│                     │ . > @typescript-eslint/eslint-plugin@6.21.0 >          │
+│                     │ @typescript-eslint/type-utils@6.21.0 >                 │
+│                     │ @typescript-eslint/utils@6.21.0 > eslint@8.57.1 >      │
+│                     │ @eslint/eslintrc@2.1.4 > js-yaml@4.1.0                 │
+│                     │                                                        │
+│                     │ ... Found 156 paths, run `pnpm why js-yaml` for more   │
+│                     │ information                                            │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ More info           │ https://github.com/advisories/GHSA-mh29-5h37-fv8m      │
+└─────────────────────┴────────────────────────────────────────────────────────┘
+┌─────────────────────┬────────────────────────────────────────────────────────┐
+│ low                 │ fast-xml-parser has stack overflow in XMLBuilder with  │
+│                     │ preserveOrder                                          │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Package             │ fast-xml-parser                                        │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Vulnerable versions │ <5.3.8                                                 │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Patched versions    │ >=5.3.8                                                │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ Paths               │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-constants@18.0.9 >      │
+│                     │ react-native@0.72.6 >                                  │
+│                     │ @react-native-community/cli@11.3.7 >                   │
+│                     │ @react-native-community/cli-doctor@11.3.7 >            │
+│                     │ @react-native-community/cli-platform-ios@11.3.7 >      │
+│                     │ fast-xml-parser@4.5.3                                  │
+│                     │                                                        │
+│                     │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-constants@18.0.9 >      │
+│                     │ react-native@0.72.6 >                                  │
+│                     │ @react-native-community/cli-platform-ios@11.3.7 >      │
+│                     │ fast-xml-parser@4.5.3                                  │
+│                     │                                                        │
+│                     │ ReactNative > @clerk/clerk-expo@2.16.1 >               │
+│                     │ expo-auth-session@7.0.8 > expo-linking@8.0.8 >         │
+│                     │ expo-constants@18.0.9 > react-native@0.72.6 >          │
+│                     │ @react-native-community/cli@11.3.7 >                   │
+│                     │ @react-native-community/cli-doctor@11.3.7 >            │
+│                     │ @react-native-community/cli-platform-ios@11.3.7 >      │
+│                     │ fast-xml-parser@4.5.3                                  │
+│                     │                                                        │
+│                     │ ... Found 78 paths, run `pnpm why fast-xml-parser` for │
+│                     │ more information                                       │
+├─────────────────────┼────────────────────────────────────────────────────────┤
+│ More info           │ https://github.com/advisories/GHSA-fj3w-jwp8-x2g3      │
+└─────────────────────┴────────────────────────────────────────────────────────┘
+24 vulnerabilities found
+Severity: 1 low | 3 moderate | 19 high | 1 critical

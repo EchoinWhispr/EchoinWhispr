@@ -2,43 +2,102 @@
 
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { useUser } from '@clerk/nextjs';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Send, User, Paperclip, X, ChevronDown, Loader2 } from 'lucide-react';
-import { Id, Doc } from '@/lib/convex';
+import { Send, User, Paperclip, X, ChevronDown, Loader2, ArrowLeft } from 'lucide-react';
+import { Doc } from '@/lib/convex';
+import { Id } from '@/lib/convex';
 import { useSendMessage } from '../hooks/useSendMessage';
-import { useGetMessages } from '../hooks/useGetMessages';
+import { usePaginatedMessages } from '../hooks/usePaginatedMessages';
 import { formatDistanceToNow } from 'date-fns';
 import { FEATURE_FLAGS } from '@/config/featureFlags';
+import { ErrorBoundary } from 'react-error-boundary';
 import { FileUpload } from '@/components/ui/file-upload';
 import Image from 'next/image';
+import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
+import React, { memo } from 'react';
+
+const MessageList = memo(({ 
+  messages, 
+  userId, 
+  messagesEndRef 
+}: { 
+  messages: Doc<'messages'>[], 
+  userId: string | undefined, 
+  messagesEndRef: React.RefObject<HTMLDivElement> 
+}) => (
+  <div className="space-y-4">
+    {messages.map((msg) => (
+      <div
+        key={msg._id}
+        className={`flex ${msg.senderId === userId ? 'justify-end' : 'justify-start'}`}
+      >
+        <div
+          className={`max-w-[75%] sm:max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
+            msg.senderId === userId
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-muted'
+          }`}
+        >
+          {FEATURE_FLAGS.CONVERSATION_EVOLUTION && msg.imageUrl && (
+            <div className="mb-2 overflow-hidden">
+              <Image
+                src={msg.imageUrl}
+                alt="Attached image"
+                width={200}
+                height={200}
+                loading="lazy"
+                className="rounded-md object-cover max-w-full h-auto"
+                style={{ maxWidth: '200px', maxHeight: '200px' }}
+              />
+            </div>
+          )}
+          <p className="text-sm break-words whitespace-pre-wrap">{msg.content}</p>
+          <p className="text-xs opacity-70 mt-1">
+            {formatDistanceToNow(new Date(msg.createdAt), { addSuffix: true })}
+          </p>
+        </div>
+      </div>
+    ))}
+    <div ref={messagesEndRef} />
+  </div>
+));
+MessageList.displayName = 'MessageList';
 
 const SCROLL_THRESHOLD = 100;
 
 export const ConversationView: React.FC<{ conversationId: string }> = ({ conversationId }) => {
   const { user } = useUser();
+  const router = useRouter();
   const [message, setMessage] = useState('');
   const [showImageUpload, setShowImageUpload] = useState(false);
   const [attachedImageUrl, setAttachedImageUrl] = useState<string | undefined>(undefined);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | undefined>(undefined);
   const [isNearBottom, setIsNearBottom] = useState(true);
   const [showScrollButton, setShowScrollButton] = useState(false);
-  const [cursor, setCursor] = useState<number | null | undefined>(undefined);
-  const [isLoadingMore, setIsLoadingMore] = useState(false);
-  const [allMessages, setAllMessages] = useState<Doc<'messages'>[]>([]);
-  const [oldestCursor, setOldestCursor] = useState<number | null>(null);
-  const [hasMoreMessages, setHasMoreMessages] = useState(false);
-  const [prevMessagesLength, setPrevMessagesLength] = useState(0);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const [optimisticMessage, setOptimisticMessage] = useState<any>(null);
+  const prevMessagesLengthRef = useRef(0);
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesContainerRef = useRef<HTMLDivElement>(null);
   const scrollPositionRef = useRef<number>(0);
-  const loadingCursorRef = useRef<number | null | undefined>(undefined);
   const isMountedRef = useRef(true);
   
   const { sendMessage, isLoading: isSending } = useSendMessage();
-  const { messages, nextCursor, hasMore, isLoading: isLoadingMessages } = useGetMessages(conversationId, cursor);
+  const { messages: allMessages, isLoadingMessages, isLoadingMore, hasMoreMessages, loadMore } = usePaginatedMessages(conversationId);
+  const { toast } = useToast();
+  
+  const displayMessages = React.useMemo(() => {
+    if (!optimisticMessage) return allMessages;
+    // Don't show optimistic if the real one already arrived (basic dedupe by content/time if necessary, but nulling it on resolve works for basic UX)
+    return [...allMessages, optimisticMessage];
+  }, [allMessages, optimisticMessage]);
+
+  const isMessageTooLong = message.trim().length > 1000;
 
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -51,42 +110,14 @@ export const ConversationView: React.FC<{ conversationId: string }> = ({ convers
   }, []);
 
   useEffect(() => {
-    if (messages && !isLoadingMessages) {
-      if (cursor === undefined) {
-        setAllMessages(messages);
-        setOldestCursor(nextCursor);
-        setHasMoreMessages(hasMore);
-        loadingCursorRef.current = undefined;
-      } else if (isLoadingMore) {
-        const expectedCursor = loadingCursorRef.current;
-        if (cursor !== expectedCursor) {
-          return;
-        }
-        const container = messagesContainerRef.current;
-        if (container) {
-          scrollPositionRef.current = container.scrollHeight;
-        }
-        const olderMessages = messages;
-        setAllMessages(prev => [...olderMessages, ...prev]);
-        setOldestCursor(nextCursor);
-        setHasMoreMessages(hasMore);
-        setIsLoadingMore(false);
-        loadingCursorRef.current = undefined;
+    if (allMessages.length > prevMessagesLengthRef.current) {
+      const newMessagesCount = allMessages.length - prevMessagesLengthRef.current;
+      if ((newMessagesCount === 1 && isNearBottom) || prevMessagesLengthRef.current === 0) {
+        scrollToBottom();
       }
+      prevMessagesLengthRef.current = allMessages.length;
     }
-  }, [messages, nextCursor, hasMore, isLoadingMessages, cursor, isLoadingMore]);
-
-  useEffect(() => {
-    if (allMessages.length > prevMessagesLength) {
-      const newMessagesCount = allMessages.length - prevMessagesLength;
-      if (cursor === undefined || newMessagesCount === 1) {
-        if (isNearBottom || cursor === undefined) {
-          scrollToBottom();
-        }
-      }
-      setPrevMessagesLength(allMessages.length);
-    }
-  }, [allMessages.length, prevMessagesLength, isNearBottom, cursor, scrollToBottom]);
+  }, [allMessages.length, isNearBottom, scrollToBottom]);
 
   useEffect(() => {
     const container = messagesContainerRef.current;
@@ -111,46 +142,76 @@ export const ConversationView: React.FC<{ conversationId: string }> = ({ convers
     if (isLoadingMore) {
       const container = messagesContainerRef.current;
       if (container) {
+        scrollPositionRef.current = container.scrollHeight;
+      }
+    } else {
+      const container = messagesContainerRef.current;
+      if (container && scrollPositionRef.current > 0) {
+        // We just finished loading more, adjust scroll to stay in same relative position
         const prevScrollHeight = scrollPositionRef.current;
         requestAnimationFrame(() => {
           const newScrollHeight = container.scrollHeight;
-          container.scrollTop = newScrollHeight - prevScrollHeight;
+          if (newScrollHeight > prevScrollHeight) {
+             container.scrollTop = newScrollHeight - prevScrollHeight;
+          }
+          scrollPositionRef.current = 0;
         });
       }
     }
-  }, [allMessages, isLoadingMore]);
+  }, [isLoadingMore, allMessages.length]);
 
   const handleLoadMore = useCallback(() => {
-    if (hasMoreMessages && oldestCursor && !isLoadingMore) {
-      setIsLoadingMore(true);
-      loadingCursorRef.current = oldestCursor;
-      setCursor(oldestCursor);
-    }
-  }, [hasMoreMessages, oldestCursor, isLoadingMore]);
+    loadMore();
+  }, [loadMore]);
 
   const handleSendMessage = async () => {
-    if (!message.trim() && !attachedImageUrl) return;
+    if ((!message.trim() && !attachedImageUrl) || isMessageTooLong) return;
 
     try {
-      await sendMessage(conversationId as Id<'conversations'>, message.trim(), attachedImageUrl);
+      const currentMsg = message.trim();
+      const currentImg = attachedImageUrl;
+      
+      setOptimisticMessage({
+        _id: `temp_${Date.now()}`,
+        _creationTime: Date.now(),
+        conversationId,
+        senderId: user?.id,
+        content: currentMsg,
+        imageUrl: currentImg,
+        isRead: false,
+        isOptimistic: true
+      });
+
       if (isMountedRef.current) {
         setMessage('');
         setAttachedImageUrl(undefined);
         setPreviewImageUrl(undefined);
       }
+      
+      scrollToBottom();
+      
+      await sendMessage(conversationId as Id<'conversations'>, currentMsg, currentImg);
+      
+      if (isMountedRef.current) {
+        setOptimisticMessage(null);
+      }
     } catch (error) {
-      // Silently ignore send errors - UI remains responsive
+      if (isMountedRef.current) {
+        setOptimisticMessage(null);
+        // Restore the message if the send fails
+        setMessage(message);
+        setAttachedImageUrl(attachedImageUrl);
+        setPreviewImageUrl(previewImageUrl);
+      }
+      toast({
+        title: "Failed to send message",
+        description: error instanceof Error ? error.message : "An unknown error occurred",
+        variant: "destructive"
+      });
     }
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSendMessage();
-    }
-  };
-
-  if (isLoadingMessages && cursor === undefined) {
+  if (isLoadingMessages && allMessages.length === 0) {
     return (
       <div className="flex items-center justify-center p-8">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
@@ -160,14 +221,19 @@ export const ConversationView: React.FC<{ conversationId: string }> = ({ convers
   }
 
   return (
-    <div className="flex flex-col h-[calc(100dvh-120px)] md:h-[calc(100dvh-140px)]">
+    <div className="flex flex-col h-[100dvh] pt-[64px] pb-0 md:h-[calc(100dvh-64px)] overflow-hidden">
       <Card className="mb-4 flex-shrink-0">
         <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <User className="h-5 w-5" />
-            Conversation
-          </CardTitle>
-          <p className="text-sm text-muted-foreground">
+          <div className="flex items-center gap-2 mb-2">
+            <Button variant="ghost" size="icon" onClick={() => window.history.length > 2 ? router.back() : router.push('/conversations')} className="h-8 w-8">
+              <ArrowLeft className="h-4 w-4" />
+            </Button>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              <User className="h-5 w-5" />
+              Conversation
+            </CardTitle>
+          </div>
+          <p className="text-sm text-muted-foreground ml-10">
             Both participants&apos; identities are now revealed
           </p>
         </CardHeader>
@@ -196,42 +262,14 @@ export const ConversationView: React.FC<{ conversationId: string }> = ({ convers
             </div>
           )}
           
-          {allMessages && allMessages.length > 0 ? (
-             <div className="space-y-4">
-               {allMessages.map((msg: Doc<'messages'>) => (
-                 <div
-                   key={msg._id}
-                   className={`flex ${msg.senderId === user?.id ? 'justify-end' : 'justify-start'}`}
-                 >
-                   <div
-                     className={`max-w-[75%] sm:max-w-xs lg:max-w-md px-4 py-2 rounded-lg ${
-                       msg.senderId === user?.id
-                         ? 'bg-primary text-primary-foreground'
-                         : 'bg-muted'
-                     }`}
-                   >
-                     {FEATURE_FLAGS.CONVERSATION_EVOLUTION && msg.imageUrl && (
-                       <div className="mb-2 overflow-hidden">
-                         <Image
-                           src={msg.imageUrl}
-                           alt="Attached image"
-                           width={200}
-                           height={200}
-                           loading="lazy"
-                           className="rounded-md object-cover max-w-full h-auto"
-                           style={{ maxWidth: '200px', maxHeight: '200px' }}
-                         />
-                       </div>
-                     )}
-                     <p className="text-sm">{msg.content}</p>
-                     <p className="text-xs opacity-70 mt-1">
-                       {formatDistanceToNow(new Date(msg.createdAt), { addSuffix: true })}
-                     </p>
-                   </div>
-                 </div>
-               ))}
-               <div ref={messagesEndRef} />
-             </div>
+          {displayMessages && displayMessages.length > 0 ? (
+            <ErrorBoundary fallback={<div className="p-4 text-center text-destructive text-sm">Failed to load messages</div>}>
+              <MessageList 
+                messages={displayMessages} 
+                userId={user?.id} 
+                messagesEndRef={messagesEndRef as React.RefObject<HTMLDivElement>} 
+              />
+            </ErrorBoundary>
            ) : (
             <div className="flex items-center justify-center h-full text-muted-foreground">
               <p>No messages yet. Start the conversation!</p>
@@ -252,22 +290,34 @@ export const ConversationView: React.FC<{ conversationId: string }> = ({ convers
         )}
       </Card>
 
-      <div className="flex-shrink-0 sticky bottom-0 bg-background/95 backdrop-blur-sm pt-2 pb-2 md:pb-0 safe-bottom">
-        <div className="flex gap-2">
-          <Input
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Type your message..."
-            className="flex-1 touch-target"
-            disabled={isSending}
-          />
+      <div className="flex-shrink-0 sticky bottom-0 bg-background/95 backdrop-blur-sm pt-2 pb-4 safe-bottom z-10">
+        <form 
+          className="flex gap-2"
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSendMessage();
+          }}
+        >
+          <div className="flex-1 flex flex-col">
+            <Input
+              value={message}
+              onChange={(e) => setMessage(e.target.value)}
+              placeholder="Type your message..."
+              className={cn("touch-target", isMessageTooLong && "border-destructive focus-visible:ring-destructive")}
+              disabled={isLoadingMessages || isSending}
+            />
+            {isMessageTooLong && (
+              <p className="text-xs text-destructive mt-1">
+                Message too long (max 1000 chars)
+              </p>
+            )}
+          </div>
           {FEATURE_FLAGS.CONVERSATION_EVOLUTION && (
             <Button
               onClick={() => setShowImageUpload(!showImageUpload)}
               variant="outline"
               size="icon"
-              disabled={isSending}
+              disabled={isLoadingMessages}
               className="touch-target"
               aria-label={showImageUpload ? 'Close image upload' : 'Attach image'}
             >
@@ -276,14 +326,15 @@ export const ConversationView: React.FC<{ conversationId: string }> = ({ convers
           )}
           <Button
             onClick={handleSendMessage}
-            disabled={(!message.trim() && !attachedImageUrl) || isSending}
+            disabled={(!message.trim() && !attachedImageUrl) || isMessageTooLong || isSending}
+            loading={isSending}
             size="icon"
             className="touch-target"
             aria-label="Send message"
           >
             <Send className="h-4 w-4" />
           </Button>
-        </div>
+        </form>
         {FEATURE_FLAGS.CONVERSATION_EVOLUTION && showImageUpload && (
           <FileUpload
             onFileUploaded={(storageId, url) => {

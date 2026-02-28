@@ -64,6 +64,8 @@
 
   html {
     scroll-behavior: smooth;
+    /* Prevent horizontal overflow causing page-resize jitter on mobile */
+    overflow-x: hidden;
   }
 
   body {
@@ -75,6 +77,14 @@
     text-rendering: optimizeLegibility;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    overflow-x: hidden;
+  }
+
+  /* Prevent layout shift when dialogs/modals open on desktop (scrollbar removal causes ~15px shift) */
+  @media (min-width: 768px) {
+    body {
+      scrollbar-gutter: stable;
+    }
   }
 
   /* Custom scrollbar for dark theme */

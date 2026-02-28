@@ -1,0 +1,1 @@
+﻿src/features/whispers/services/whisperService.ts(98,22): error TS18047: 'convex' is possibly 'null'.

@@ -156,18 +156,18 @@ export const WhisperComposer: React.FC<WhisperComposerProps> = ({
     [content, selectedRecipient, selectedImage, isMystery, location, sendWhisper, sendMysteryWhisper, upload, onWhisperSent, toast, handleRemoveImage]
   );
 
-  const isDisabled = useMemo(() => {
-    const hasValidContent = content.trim().length >= WHISPER_LIMITS.MIN_CONTENT_LENGTH;
-    const hasImage = !!selectedImage;
-    const hasRecipient = isMystery || !!selectedRecipient;
-    const withinLimit = content.length <= maxLength;
-    // Allow sending if has valid content OR has image attached
-    return (!hasValidContent && !hasImage) || !hasRecipient || !withinLimit || isLoading || isUploading;
-  }, [content, selectedRecipient, selectedImage, isMystery, maxLength, isLoading, isUploading]);
+  const validationHint = useMemo(() => {
+    if (!content.trim().length && !selectedImage) return 'Enter a message or attach an image';
+    if (!isMystery && !selectedRecipient) return 'Select a recipient';
+    if (content.length > maxLength) return 'Message is too long';
+    return null;
+  }, [content, selectedImage, isMystery, selectedRecipient, maxLength]);
+
+  const isDisabled = !!validationHint || isLoading || isUploading;
 
   return (
     <div className={`space-y-6 ${className}`}>
-      <div className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2 text-primary">
             {isMystery ? <HelpCircle className="w-5 h-5" /> : <Shield className="w-5 h-5" />}
@@ -210,6 +210,12 @@ export const WhisperComposer: React.FC<WhisperComposerProps> = ({
             placeholder={isMystery ? "Whisper something to the universe..." : placeholder}
             value={content}
             onChange={handleContentChange}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSubmit(e);
+              }
+            }}
             maxLength={maxLength}
             className="min-h-[120px] sm:min-h-[160px] resize-none p-4 pr-12 bg-secondary/30 border-white/10 focus:border-primary/50 focus:ring-primary/20 text-lg transition-all duration-300"
           />
@@ -274,15 +280,19 @@ export const WhisperComposer: React.FC<WhisperComposerProps> = ({
            </div>
         )}
 
-        <div className="flex items-center justify-between pt-2">
-          <span className="text-xs text-muted-foreground font-medium ml-1">
-            {content.length}/{maxLength} characters
-          </span>
-          <Button
-            onClick={handleSubmit}
-            disabled={isDisabled}
-            className="px-8 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25 transition-all duration-300"
-          >
+        <div className="flex flex-col gap-2 pt-2">
+          {validationHint && (
+            <span className="text-xs text-destructive/80">{validationHint}</span>
+          )}
+          <div className="flex items-center justify-between">
+            <span className="text-xs text-muted-foreground font-medium ml-1">
+              {content.length}/{maxLength} characters
+            </span>
+            <Button
+              type="submit"
+              disabled={isDisabled}
+              className="px-6 sm:px-8 bg-primary hover:bg-primary/90 shadow-lg shadow-primary/25 transition-all duration-300"
+            >
             {isLoading || isUploading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
@@ -294,9 +304,10 @@ export const WhisperComposer: React.FC<WhisperComposerProps> = ({
                 <Send className="w-4 h-4 ml-2" />
               </>
             )}
-          </Button>
+            </Button>
+          </div>
         </div>
-      </div>
+        </form>
 
       <input
         ref={fileInputRef}

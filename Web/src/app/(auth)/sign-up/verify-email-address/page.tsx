@@ -35,7 +35,7 @@ function VerifyEmailAddressContent(): JSX.Element {
   }, [router, searchParams]);
 
   return (
-    <main className="flex min-h-screen flex-col items-center justify-center p-4">
+    <main className="flex min-h-[100dvh] flex-col items-center justify-center p-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">Verifying Email</CardTitle>
@@ -67,7 +67,7 @@ export default function VerifyEmailAddressPage(): JSX.Element {
   return (
     <Suspense
       fallback={
-        <main className="flex min-h-screen flex-col items-center justify-center p-4">
+        <main className="flex min-h-[100dvh] flex-col items-center justify-center p-4">
           <Card className="w-full max-w-md">
             <CardHeader className="text-center">
               <CardTitle className="text-2xl font-bold">Loading...</CardTitle>

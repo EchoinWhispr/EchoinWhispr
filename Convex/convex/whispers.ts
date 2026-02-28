@@ -4,6 +4,13 @@ import { internal } from './_generated/api';
 import { Doc, Id } from './_generated/dataModel';
 import { enforceRateLimit, recordRateLimitedAction } from './rateLimits';
 import { VALIDATION } from './schema';
+import { requireUser } from './auth';
+
+// Utility for basic XSS prevention (strip HTML tags)
+const sanitizeText = (text: string | undefined): string => {
+  if (!text) return '';
+  return text.replace(/<[^>]*>?/gm, '');
+};
 
 // Send a whisper to another user
 export const sendWhisper = mutation({
@@ -14,30 +21,21 @@ export const sendWhisper = mutation({
     location: v.optional(v.object({ latitude: v.number(), longitude: v.number() })),
   },
   handler: async (ctx, args) => {
+    // Sanitize content
+    const sanitizedContent = sanitizeText(args.content);
+
     // Validate content length (max 280 characters as per SSD)
-    if (args.content.length > 280) {
+    if (sanitizedContent.length > 280) {
       throw new Error('Whisper content must be 280 characters or less');
     }
 
     // Allow image-only whispers - only reject if both content and imageUrl are empty
-    if (args.content.trim().length === 0 && !args.imageUrl) {
+    if (sanitizedContent.trim().length === 0 && !args.imageUrl) {
       throw new Error('Whisper must have content or an image');
     }
 
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Not authenticated');
-    }
-
     // Get sender
-    const sender = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!sender) {
-      throw new Error('Sender not found');
-    }
+    const sender = await requireUser(ctx);
 
     // Enforce rate limit (20 whispers per hour)
     await enforceRateLimit(ctx, sender._id, 'SEND_WHISPER');
@@ -63,7 +61,7 @@ export const sendWhisper = mutation({
     const whisperId = await ctx.db.insert('whispers', {
       senderId: sender._id,
       recipientId: recipient._id,
-      content: args.content.trim(),
+      content: sanitizedContent.trim(),
       imageUrl: args.imageUrl,
       location: args.location,
       isRead: false,
@@ -74,9 +72,9 @@ export const sendWhisper = mutation({
     await recordRateLimitedAction(ctx, sender._id, 'SEND_WHISPER');
 
     // Create notification for recipient
-    const messagePreview = args.content.trim().length > 50 
-      ? args.content.trim().slice(0, 50) + '...' 
-      : args.content.trim();
+    const messagePreview = sanitizedContent.trim().length > 50 
+      ? sanitizedContent.trim().slice(0, 50) + '...' 
+      : sanitizedContent.trim();
     
     await ctx.scheduler.runAfter(0, internal.notifications.createNotificationInternal, {
       userId: recipient._id,
@@ -114,8 +112,9 @@ export const getReceivedWhispers = query({
 
     const result = await ctx.db
       .query('whispers')
-      .withIndex('by_recipient', q => q.eq('recipientId', user._id))
-      .filter(q => q.eq(q.field('conversationId'), undefined))
+      .withIndex('by_recipient_conversation', q => 
+        q.eq('recipientId', user._id).eq('conversationId', undefined)
+      )
       .order('desc')
       .paginate(args.paginationOpts);
 
@@ -142,13 +141,13 @@ export const getAllReceivedWhispers = query({
       return [];
     }
 
-    // Fetch ALL whispers for this user (no pagination limit)
     const whispers = await ctx.db
       .query('whispers')
-      .withIndex('by_recipient', q => q.eq('recipientId', user._id))
-      .filter(q => q.eq(q.field('conversationId'), undefined))
+      .withIndex('by_recipient_conversation', q => 
+        q.eq('recipientId', user._id).eq('conversationId', undefined)
+      )
       .order('desc')
-      .collect();
+      .take(500);
 
     return whispers;
   },
@@ -176,8 +175,9 @@ export const getReceivedWhispersCount = query({
     // Count whispers not part of a conversation (standalone whispers)
     const whispers = await ctx.db
       .query('whispers')
-      .withIndex('by_recipient', q => q.eq('recipientId', user._id))
-      .filter(q => q.eq(q.field('conversationId'), undefined))
+      .withIndex('by_recipient_conversation', q => 
+        q.eq('recipientId', user._id).eq('conversationId', undefined)
+      )
       .take(100); // Cap at 100 for performance
 
     // Indicate if count was capped at 100
@@ -223,19 +223,7 @@ export const markWhisperAsRead = mutation({
     whisperId: v.id('whispers'),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Not authenticated');
-    }
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error('User not found');
-    }
+    const user = await requireUser(ctx);
 
     // Get the whisper to verify ownership
     const whisper = await ctx.db.get(args.whisperId);
@@ -280,9 +268,9 @@ export const getUnreadWhisperCount = query({
     // This returns an approximate count for UI purposes without fetching all records
     const unreadWhispers = await ctx.db
       .query('whispers')
-      .withIndex('by_recipient', q => q.eq('recipientId', user._id))
-      .filter(q => q.eq(q.field('isRead'), false))
-      .filter(q => q.eq(q.field('conversationId'), undefined))
+      .withIndex('by_recipient_conversation_isRead', q => 
+        q.eq('recipientId', user._id).eq('conversationId', undefined).eq('isRead', false)
+      )
       .take(100); // Cap at 100 for performance
 
     return unreadWhispers.length;
@@ -294,19 +282,7 @@ export const getWhisperById = query({
     whisperId: v.id('whispers'),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Not authenticated');
-    }
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error('User not found');
-    }
+    const user = await requireUser(ctx);
 
     const whisper = await ctx.db.get(args.whisperId);
     if (!whisper) {
@@ -330,15 +306,10 @@ export const replyToWhisper = mutation({
     imageUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error('Not authenticated');
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!user) throw new Error('User not found');
+    const user = await requireUser(ctx);
+    
+    // Sanitize content
+    const sanitizedContent = sanitizeText(args.content);
 
     // 1. Check Feature Flag
     const featureFlag = await ctx.db
@@ -379,7 +350,7 @@ export const replyToWhisper = mutation({
     const whisperId = await ctx.db.insert('whispers', {
       senderId: user._id,
       recipientId: parentWhisper.recipientId, // Chain continues to same recipient
-      content: args.content,
+      content: sanitizedContent.trim(),
       imageUrl: args.imageUrl,
       isRead: false,
       createdAt: Date.now(),
@@ -407,15 +378,7 @@ export const getWhisperChain = query({
     whisperId: v.id('whispers'),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error('Not authenticated');
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!user) throw new Error('User not found');
+    const user = await requireUser(ctx);
 
     const targetWhisper = await ctx.db.get(args.whisperId);
     if (!targetWhisper) throw new Error('Whisper not found');
@@ -452,19 +415,7 @@ export const toggleReaction = mutation({
     emoji: v.string(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Not authenticated');
-    }
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error('User not found');
-    }
+    const user = await requireUser(ctx);
 
     const whisper = await ctx.db.get(args.whisperId);
     if (!whisper) {
@@ -504,10 +455,7 @@ export const toggleReaction = mutation({
 export const generateVoiceUploadUrl = mutation({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Not authenticated');
-    }
+    await requireUser(ctx);
 
     return await ctx.storage.generateUploadUrl();
   },
@@ -522,19 +470,7 @@ export const sendVoiceWhisper = mutation({
     isVoiceModulated: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Not authenticated');
-    }
-
-    const sender = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!sender) {
-      throw new Error('Sender not found');
-    }
+    const sender = await requireUser(ctx);
 
     // Enforce rate limit for voice whispers
     await enforceRateLimit(ctx, sender._id, 'SEND_WHISPER');
@@ -575,19 +511,7 @@ export const getVoiceMessageUrl = query({
     whisperId: v.id('whispers'),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Not authenticated');
-    }
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error('User not found');
-    }
+    const user = await requireUser(ctx);
 
     const whisper = await ctx.db.get(args.whisperId);
     if (!whisper || whisper.audioStorageId !== args.storageId) {
@@ -613,7 +537,10 @@ export const scheduleWhisper = mutation({
     imageUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    if (args.content.length > 280) {
+    // Sanitize content
+    const sanitizedContent = sanitizeText(args.content);
+
+    if (sanitizedContent.length > 280) {
       throw new Error('Whisper content must be 280 characters or less');
     }
 
@@ -659,7 +586,7 @@ export const scheduleWhisper = mutation({
     const whisperId = await ctx.db.insert('whispers', {
       senderId: sender._id,
       recipientId: recipient._id,
-      content: args.content.trim(),
+      content: sanitizedContent.trim(),
       imageUrl: args.imageUrl,
       isRead: false,
       createdAt: now,
@@ -693,12 +620,8 @@ export const getScheduledWhispers = query({
 
     return await ctx.db
       .query('whispers')
-      .withIndex('by_scheduled', q => q.eq('isScheduled', true))
-      .filter(q => 
-        q.and(
-          q.eq(q.field('senderId'), user._id),
-          q.gt(q.field('scheduledFor'), Date.now())
-        )
+      .withIndex('by_sender_scheduled', q => 
+        q.eq('senderId', user._id).eq('isScheduled', true).gt('scheduledFor', Date.now())
       )
       .order('asc')
       .collect();
@@ -713,8 +636,9 @@ export const processScheduledWhispers = internalMutation({
 
     const dueWhispers = await ctx.db
       .query('whispers')
-      .withIndex('by_scheduled', q => q.eq('isScheduled', true))
-      .filter(q => q.lte(q.field('scheduledFor'), now))
+      .withIndex('by_scheduled', q => 
+        q.eq('isScheduled', true).lte('scheduledFor', now)
+      )
       .collect();
 
     for (const whisper of dueWhispers) {
@@ -734,19 +658,7 @@ export const cancelScheduledWhisper = mutation({
     whisperId: v.id('whispers'),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Not authenticated');
-    }
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error('User not found');
-    }
+    const user = await requireUser(ctx);
 
     const whisper = await ctx.db.get(args.whisperId);
     if (!whisper) {
@@ -775,19 +687,7 @@ export const archiveWhisper = mutation({
     whisperId: v.id('whispers'),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Not authenticated');
-    }
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error('User not found');
-    }
+    const user = await requireUser(ctx);
 
     const whisper = await ctx.db.get(args.whisperId);
     if (!whisper) {
@@ -810,19 +710,7 @@ export const unarchiveWhisper = mutation({
     whisperId: v.id('whispers'),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Not authenticated');
-    }
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error('User not found');
-    }
+    const user = await requireUser(ctx);
 
     const whisper = await ctx.db.get(args.whisperId);
     if (!whisper) {
@@ -861,13 +749,15 @@ export const getArchivedWhispers = query({
     const [received, sent] = await Promise.all([
       ctx.db
         .query('whispers')
-        .withIndex('by_recipient', q => q.eq('recipientId', user._id))
-        .filter(q => q.eq(q.field('isArchived'), true))
+        .withIndex('by_recipient_archived', q => 
+          q.eq('recipientId', user._id).eq('isArchived', true)
+        )
         .take(50),
       ctx.db
         .query('whispers')
-        .withIndex('by_sender', q => q.eq('senderId', user._id))
-        .filter(q => q.eq(q.field('isArchived'), true))
+        .withIndex('by_sender_archived', q => 
+          q.eq('senderId', user._id).eq('isArchived', true)
+        )
         .take(50),
     ]);
 
@@ -912,8 +802,9 @@ export const setTypingStatus = mutation({
     // Check for existing indicator
     const existing = await ctx.db
       .query('typingIndicators')
-      .withIndex('by_conversation', q => q.eq('conversationId', conversation._id))
-      .filter(q => q.eq(q.field('userId'), user._id))
+      .withIndex('by_conversation_user', q => 
+        q.eq('conversationId', conversation._id).eq('userId', user._id)
+      )
       .first();
 
     const now = Date.now();
