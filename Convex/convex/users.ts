@@ -58,16 +58,26 @@ export const createOrUpdateUser = internalMutation({
       });
       return existing._id;
     } else {
-      // Create new user
-      // Default displayName to username initially
+      // Ensure username is unique (append suffix if taken)
+      let finalUsername = args.username;
+      let suffix = 1;
+      while (true) {
+        const existingWithUsername = await ctx.db
+          .query('users')
+          .withIndex('by_username', q => q.eq('username', finalUsername))
+          .first();
+        if (!existingWithUsername) break;
+        finalUsername = `${args.username.slice(0, 16)}_${suffix}`;
+        suffix++;
+      }
+
       return await ctx.db.insert('users', {
         clerkId: args.clerkId,
-        username: args.username,
+        username: finalUsername,
         email: args.email,
         firstName: args.firstName,
         lastName: args.lastName,
-        displayName: args.username, 
-        // Initialize SSD fields
+        displayName: finalUsername,
         career: args.career,
         interests: args.interests,
         mood: args.mood,
@@ -653,6 +663,96 @@ export const unpinConversation = mutation({
 });
 
 // ============================================================
+// DASHBOARD DATA (Aggregated Query)
+// ============================================================
+
+/**
+ * Combined dashboard data query to reduce concurrent subscriptions.
+ * Returns all data needed for the dashboard in a single round-trip.
+ */
+export const getDashboardData = query({
+  args: {},
+  handler: async (ctx) => {
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      return null;
+    }
+
+    const user = await ctx.db
+      .query('users')
+      .withIndex('by_clerk_id', (q) => q.eq('clerkId', identity.subject))
+      .first();
+
+    if (!user) {
+      return null;
+    }
+
+    const [
+      pendingFriendRequests,
+      friendsListData,
+      receivedFriendsData,
+      myChambersData,
+      receivedWhispersData,
+      resonancePrefs,
+    ] = await Promise.all([
+      ctx.db
+        .query('friends')
+        .withIndex('by_friend_status', (q) => q.eq('friendId', user._id).eq('status', 'pending'))
+        .take(100),
+      ctx.db
+        .query('friends')
+        .withIndex('by_user_status', (q) => q.eq('userId', user._id).eq('status', 'accepted'))
+        .take(200),
+      ctx.db
+        .query('friends')
+        .withIndex('by_friend_status', (q) => q.eq('friendId', user._id).eq('status', 'accepted'))
+        .take(200),
+      ctx.db
+        .query('echoChamberMembers')
+        .withIndex('by_user', (q) => q.eq('userId', user._id))
+        .take(100),
+      ctx.db
+        .query('whispers')
+        .withIndex('by_recipient', (q) => q.eq('recipientId', user._id))
+        .filter(q => q.eq(q.field('conversationId'), undefined))
+        .order('desc')
+        .take(5),
+      ctx.db
+        .query('resonancePreferences')
+        .withIndex('by_user', (q) => q.eq('userId', user._id))
+        .first(),
+    ]);
+
+    const allFriendships = [...friendsListData, ...receivedFriendsData];
+
+    return {
+      currentUser: {
+        _id: user._id,
+        username: user.username,
+        displayName: user.displayName,
+        mood: user.mood,
+        career: user.career,
+        interests: user.interests,
+        firstName: user.firstName,
+        isDeleted: user.isDeleted ?? false,
+      },
+      isDeleted: user.isDeleted ?? false,
+      resonancePrefs,
+      pendingFriendRequestsCount: pendingFriendRequests.length,
+      friendCount: allFriendships.length,
+      chambersCount: myChambersData.length,
+      whispers: receivedWhispersData.map(w => ({
+        _id: w._id,
+        _creationTime: w._creationTime,
+        content: w.content,
+        isRead: w.isRead,
+        imageUrl: w.imageUrl,
+      })),
+    };
+  },
+});
+
+// ============================================================
 // GDPR COMPLIANCE: SOFT DELETE
 // ============================================================
 
@@ -836,8 +936,7 @@ export const requestUsernameChange = mutation({
     // Cancel any existing pending request from this user
     const existingRequest = await ctx.db
       .query('usernameChangeRequests')
-      .withIndex('by_user_id', q => q.eq('userId', user._id))
-      .filter(q => q.eq(q.field('status'), 'pending'))
+      .withIndex('by_user_id_status', q => q.eq('userId', user._id).eq('status', 'pending'))
       .first();
     if (existingRequest) {
       await ctx.db.patch(existingRequest._id, { status: 'rejected', updatedAt: Date.now() });

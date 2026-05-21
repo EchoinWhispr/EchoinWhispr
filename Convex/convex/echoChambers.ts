@@ -3,6 +3,7 @@ import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 import { internal } from "./_generated/api";
 import { Id } from "./_generated/dataModel";
+import { paginationOptsValidator } from "convex/server";
 import { enforceRateLimit, recordRateLimitedAction } from "./rateLimits";
 import { VALIDATION } from "./schema";
 
@@ -40,10 +41,7 @@ export const createChamber = mutation({
     isPublic: v.optional(v.boolean()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
+    const user = await requireUser(ctx);
 
     const trimmedName = args.name.trim();
     if (trimmedName.length < 2 || trimmedName.length > 50) {
@@ -57,15 +55,6 @@ export const createChamber = mutation({
     const maxMembers = args.maxMembers || 50;
     if (maxMembers < VALIDATION.CHAMBER_MIN_MEMBERS || maxMembers > VALIDATION.CHAMBER_MAX_MEMBERS) {
       throw new Error(`Max members must be between ${VALIDATION.CHAMBER_MIN_MEMBERS} and ${VALIDATION.CHAMBER_MAX_MEMBERS}`);
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
     }
 
     await enforceRateLimit(ctx, user._id, "CREATE_ECHO_CHAMBER");
@@ -265,8 +254,8 @@ export const updateAlias = mutation({
     const userMessages = await ctx.db
       .query("echoChamberMessages")
       .withIndex("by_chamber", (q) => q.eq("chamberId", args.chamberId))
-      .filter((q) => q.eq(q.field("senderId"), user._id))
-      .collect();
+      .collect()
+      .then(rs => rs.filter(r => r.senderId === user._id));
 
     // Update each message with the new alias in parallel
     await Promise.all(
@@ -334,10 +323,7 @@ export const sendMessage = mutation({
     audioDuration: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
+    const user = await requireUser(ctx);
 
     // Validate content length
     if (!args.content.trim() && !args.imageUrl && !args.audioStorageId) {
@@ -346,15 +332,6 @@ export const sendMessage = mutation({
     
     if (args.content.length > 2000) {
       throw new Error("Message content must be 2000 characters or less");
-    }
-
-    const user = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error("User not found");
     }
 
     // Check membership
@@ -475,13 +452,12 @@ export const addReaction = mutation({
 export const getMessages = query({
   args: {
     chamberId: v.id("echoChambers"),
-    limit: v.optional(v.number()),
-    cursor: v.optional(v.number()),
+    paginationOpts: paginationOptsValidator,
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
     if (!identity) {
-      return { messages: [], hasMore: false };
+      return { page: [], isDone: true, continueCursor: "" };
     }
 
     const user = await ctx.db
@@ -490,7 +466,7 @@ export const getMessages = query({
       .first();
 
     if (!user) {
-      return { messages: [], hasMore: false };
+      return { page: [], isDone: true, continueCursor: "" };
     }
 
     // Verify membership
@@ -502,38 +478,24 @@ export const getMessages = query({
       .first();
 
     if (!membership) {
-      return { messages: [], hasMore: false };
+      return { page: [], isDone: true, continueCursor: "" };
     }
 
-    const limit = args.limit || 50;
-    
-    let messagesQuery = ctx.db
+    const result = await ctx.db
       .query("echoChamberMessages")
-      .withIndex("by_created", (q) => q.eq("chamberId", args.chamberId));
-
-    if (args.cursor !== undefined) {
-      messagesQuery = messagesQuery.filter((q) => 
-        q.lt(q.field("createdAt"), args.cursor!)
-      );
-    }
-
-    const messages = await messagesQuery
+      .withIndex("by_created", (q) => q.eq("chamberId", args.chamberId))
       .order("desc")
-      .take(limit + 1);
-
-    const hasMore = messages.length > limit;
-    const resultMessages = hasMore ? messages.slice(0, -1) : messages;
+      .paginate(args.paginationOpts);
 
     // Mark which messages are from the current user
-    const enrichedMessages = resultMessages.map(m => ({
+    const enrichedMessages = result.page.map(m => ({
       ...m,
       isOwnMessage: m.senderId === user._id,
     }));
 
     return {
-      messages: enrichedMessages.reverse(), // Oldest first for display
-      hasMore,
-      nextCursor: hasMore ? resultMessages[resultMessages.length - 1].createdAt : undefined,
+      ...result,
+      page: enrichedMessages.reverse(), // Oldest first for display
     };
   },
 });
@@ -598,9 +560,8 @@ export const getChamberByInviteCode = query({
       return null;
     }
 
-    // Return limited info for preview
+    // Return limited info for preview (no internal _id exposed)
     return {
-      _id: chamber._id,
       name: chamber.name,
       description: chamber.description,
       topic: chamber.topic,
@@ -624,10 +585,30 @@ export const listPublicChambers = query({
       .withIndex("by_public", (q) => q.eq("isPublic", true));
 
     if (args.topic !== undefined) {
-      query = ctx.db
+      const topicChambers = await ctx.db
         .query("echoChambers")
         .withIndex("by_topic", (q) => q.eq("topic", args.topic!))
-        .filter((q) => q.eq(q.field("isPublic"), true));
+        .take(args.limit || 20);
+      const publicChambers = topicChambers.filter(c => c.isPublic);
+      if (!identity) {
+        return publicChambers.map(chamber => ({ ...chamber, isMember: false }));
+      }
+      const user = await ctx.db
+        .query("users")
+        .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
+        .first();
+      if (!user) {
+        return publicChambers.map(chamber => ({ ...chamber, isMember: false }));
+      }
+      const memberships = await ctx.db
+        .query("echoChamberMembers")
+        .withIndex("by_user", (q) => q.eq("userId", user._id))
+        .collect();
+      const memberChamberIds = new Set(memberships.map(m => m.chamberId));
+      return publicChambers.map(chamber => ({
+        ...chamber,
+        isMember: memberChamberIds.has(chamber._id),
+      }));
     }
 
     const chambers = await query

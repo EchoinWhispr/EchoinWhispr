@@ -441,7 +441,6 @@ export default function LandingPage(): JSX.Element {
                   transition={{ duration: 0.6, delay: idx * 0.1 }}
                   className="relative p-8 rounded-2xl bg-white/5 group border border-transparent hover:border-primary/30 transition-all backdrop-blur-md"
                 >
-                  <div className="text-4xl font-black text-white/5 absolute top-4 right-6 group-hover:text-white/10 transition-colors">{item.step}</div>
                   <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-6 group-hover:bg-primary/20 transition-colors">
                     <item.icon className="w-6 h-6 text-primary" />
                   </div>

@@ -2,7 +2,7 @@ import { requireUser } from './auth';
 import { v } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import { internal } from './_generated/api';
-import { Doc, Id } from './_generated/dataModel';
+import { Id } from './_generated/dataModel';
 import { enforceRateLimit, recordRateLimitedAction } from './rateLimits';
 
 /**
@@ -29,20 +29,7 @@ export const sendFriendRequest = mutation({
     message: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Unauthorized: User must be authenticated');
-    }
-
-    // Get the user
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error('User not found');
-    }
+    const user = await requireUser(ctx);
 
     // Enforce rate limit (30 requests per day)
     await enforceRateLimit(ctx, user._id, 'SEND_FRIEND_REQUEST');
@@ -56,6 +43,30 @@ export const sendFriendRequest = mutation({
     // Prevent self-friending
     if (user._id === args.friendId) {
       throw new Error('Cannot send friend request to yourself');
+    }
+
+    // Check if target has blocked the sender
+    const blockFromTarget = await ctx.db
+      .query('friends')
+      .withIndex('by_user_friend_status', q =>
+        q.eq('userId', args.friendId).eq('friendId', user._id).eq('status', 'blocked')
+      )
+      .first();
+
+    if (blockFromTarget) {
+      throw new Error('Unable to send friend request');
+    }
+
+    // Check if sender has blocked the target
+    const blockFromSender = await ctx.db
+      .query('friends')
+      .withIndex('by_user_friend_status', q =>
+        q.eq('userId', user._id).eq('friendId', args.friendId).eq('status', 'blocked')
+      )
+      .first();
+
+    if (blockFromSender) {
+      throw new Error('Unable to send friend request');
     }
 
     // Check if friendship already exists

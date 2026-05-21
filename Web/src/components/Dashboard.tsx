@@ -92,15 +92,8 @@ export function Dashboard() {
   const router = useRouter();
   const isMountedRef = useRef(true);
   
-  const currentUser = useQuery(api.users.getCurrentUser);
-  const isDeleted = useQuery(api.users.isCurrentUserDeleted);
-  const pendingFriendRequests = useQuery(api.friends.getPendingRequests);
-  const friendsList = useQuery(api.friends.getFriendsList, { limit: 10 });
+  const dashboardData = useQuery(api.users.getDashboardData);
   const myChambers = useQuery(api.echoChambers.getMyChambers);
-  const resonancePrefs = useQuery(api.resonance.getResonancePreferences);
-  const receivedWhispers = useQuery(api.whispers.getReceivedWhispers, { 
-    paginationOpts: { numItems: 5, cursor: null } 
-  });
 
   useEffect(() => {
     return () => {
@@ -109,7 +102,7 @@ export function Dashboard() {
   }, []);
 
   useEffect(() => {
-    if (isDeleted === true) {
+    if (dashboardData?.isDeleted === true) {
       signOut()
         .then(() => {
           if (isMountedRef.current) {
@@ -120,16 +113,9 @@ export function Dashboard() {
           console.error('Sign out failed:', error);
         });
     }
-  }, [isDeleted, signOut, router]);
+  }, [dashboardData?.isDeleted, signOut, router]);
 
-  const isLoading = 
-    currentUser === undefined ||
-    isDeleted === undefined ||
-    pendingFriendRequests === undefined ||
-    friendsList === undefined ||
-    myChambers === undefined ||
-    resonancePrefs === undefined ||
-    receivedWhispers === undefined;
+  const isLoading = dashboardData === undefined || myChambers === undefined;
 
   const [currentDate, setCurrentDate] = useState<Date | null>(null);
 
@@ -150,11 +136,11 @@ export function Dashboard() {
     return currentDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' });
   };
 
-  const displayName = currentUser?.displayName || currentUser?.username || user?.firstName || 'there';
-  const pendingRequests = pendingFriendRequests?.length || 0;
-  const friendCount = friendsList?.totalCount || 0;
+  const displayName = dashboardData?.currentUser?.displayName || dashboardData?.currentUser?.username || user?.firstName || 'there';
+  const pendingRequests = dashboardData?.pendingFriendRequestsCount || 0;
+  const friendCount = dashboardData?.friendCount || 0;
   const chambersCount = myChambers?.length || 0;
-  const whispers = receivedWhispers?.page || [];
+  const whispers = dashboardData?.whispers || [];
   const unreadWhispers = whispers.filter(w => !w.isRead).length;
 
   return (
@@ -254,10 +240,10 @@ export function Dashboard() {
               </div>
               
               {/* Mood Badge with Glow */}
-              {currentUser?.mood && (
+              {dashboardData?.currentUser?.mood && (
                 <div className="hidden md:flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-accent/20 to-primary/20 border border-accent/30 shadow-lg shadow-accent/20 hover:shadow-accent/40 transition-shadow duration-300">
                   <Sparkles className="w-4 h-4 text-accent motion-safe:animate-pulse" />
-                  <span className="text-sm font-medium">{currentUser.mood}</span>
+                  <span className="text-sm font-medium">{dashboardData.currentUser.mood}</span>
                 </div>
               )}
             </div>
@@ -267,7 +253,7 @@ export function Dashboard() {
               <StatPill icon={Mail} label="Whispers" value={whispers.length} color="from-primary via-cyan-500 to-accent" href="/inbox" glowColor="primary" />
               <StatPill icon={Radio} label="Chambers" value={chambersCount} color="from-amber-500 via-orange-500 to-red-500" href="/chambers" glowColor="amber" />
               <StatPill icon={Heart} label="Friends" value={friendCount} color="from-rose-500 via-pink-500 to-fuchsia-500" href="/friends" glowColor="rose" />
-              <StatPill icon={Target} label="Profile" value={`${getProfileCompleteness(currentUser, resonancePrefs)}%`} color="from-cyan-500 via-blue-500 to-primary" href="/profile" glowColor="cyan" />
+              <StatPill icon={Target} label="Profile" value={`${getProfileCompleteness(dashboardData?.currentUser, dashboardData?.resonancePrefs)}%`} color="from-cyan-500 via-blue-500 to-primary" href="/profile" glowColor="cyan" />
               
               {/* Friend Requests - highlighted if pending */}
               <Link href="/friends?tab=requests" className="col-span-2 md:col-span-1">

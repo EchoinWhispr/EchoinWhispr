@@ -2,6 +2,7 @@ import { v } from 'convex/values';
 import { mutation, query } from './_generated/server';
 import { paginationOptsValidator } from 'convex/server';
 import { Doc, Id } from './_generated/dataModel';
+import { requireUser } from './auth';
 import { isAdmin, isSuperAdmin, getAdminRole, AdminRole } from './adminAuth';
 import { enforceRateLimit, recordRateLimitedAction } from './rateLimits';
 
@@ -84,23 +85,11 @@ export const requestAdminPromotion = mutation({
     reason: v.string(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Not authenticated');
-    }
+    const user = await requireUser(ctx);
 
     // Validate reason
     if (args.reason.trim().length < 10) {
       throw new Error('Please provide a reason with at least 10 characters');
-    }
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', (q) => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error('User not found');
     }
 
     await enforceRateLimit(ctx, user._id, 'REQUEST_ADMIN_PROMOTION');
@@ -118,8 +107,7 @@ export const requestAdminPromotion = mutation({
     // Check for existing pending request
     const existingRequest = await ctx.db
       .query('adminRequests')
-      .withIndex('by_user_id', (q) => q.eq('userId', user._id))
-      .filter((q) => q.eq(q.field('status'), 'pending'))
+      .withIndex('by_user_id_status', (q) => q.eq('userId', user._id).eq('status', 'pending'))
       .first();
 
     if (existingRequest) {
@@ -129,7 +117,7 @@ export const requestAdminPromotion = mutation({
     // Create the request
     const requestId = await ctx.db.insert('adminRequests', {
       userId: user._id,
-      clerkId: identity.subject,
+      clerkId: user.clerkId,
       reason: args.reason.trim(),
       requestType: 'admin',
       status: 'pending',
@@ -190,13 +178,10 @@ export const approveAdminRequest = mutation({
     requestId: v.id('adminRequests'),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Not authenticated');
-    }
+    const reviewerUser = await requireUser(ctx);
 
     // Verify super admin
-    const isSuperAdminUser = await isSuperAdmin(ctx, identity.subject);
+    const isSuperAdminUser = await isSuperAdmin(ctx, reviewerUser.clerkId);
     if (!isSuperAdminUser) {
       throw new Error('Unauthorized: Super admin access required');
     }
@@ -208,15 +193,6 @@ export const approveAdminRequest = mutation({
 
     if (request.status !== 'pending') {
       throw new Error('Request has already been processed');
-    }
-
-    const reviewerUser = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', (q) => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!reviewerUser) {
-      throw new Error('Reviewer user record not found');
     }
 
     const now = Date.now();
@@ -267,13 +243,10 @@ export const rejectAdminRequest = mutation({
     requestId: v.id('adminRequests'),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Not authenticated');
-    }
+    const reviewerUser = await requireUser(ctx);
 
     // Verify super admin
-    const isSuperAdminUser = await isSuperAdmin(ctx, identity.subject);
+    const isSuperAdminUser = await isSuperAdmin(ctx, reviewerUser.clerkId);
     if (!isSuperAdminUser) {
       throw new Error('Unauthorized: Super admin access required');
     }
@@ -285,15 +258,6 @@ export const rejectAdminRequest = mutation({
 
     if (request.status !== 'pending') {
       throw new Error('Request has already been processed');
-    }
-
-    const reviewerUser = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', (q) => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!reviewerUser) {
-      throw new Error('Reviewer user record not found');
     }
 
     await ctx.db.patch(args.requestId, {
@@ -314,13 +278,11 @@ export const grantAdminRole = mutation({
     username: v.string(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Not authenticated');
-    }
+    // Re-read granter inside mutation (TOCTOU fix)
+    const granterUser = await requireUser(ctx);
 
-    // Verify super admin
-    const isSuperAdminUser = await isSuperAdmin(ctx, identity.subject);
+    // Verify super admin using fresh data
+    const isSuperAdminUser = await isSuperAdmin(ctx, granterUser.clerkId);
     if (!isSuperAdminUser) {
       throw new Error('Unauthorized: Super admin access required');
     }
@@ -344,15 +306,6 @@ export const grantAdminRole = mutation({
       throw new Error('User is already an admin');
     }
 
-    const granterUser = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', (q) => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!granterUser) {
-      throw new Error('Granter user record not found');
-    }
-
     await ctx.db.insert('adminRoles', {
       userId: targetUser._id,
       clerkId: targetUser.clerkId,
@@ -373,25 +326,16 @@ export const revokeAdminRole = mutation({
     userId: v.id('users'),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Not authenticated');
-    }
+    const currentUser = await requireUser(ctx);
 
     // Verify super admin
-    const isSuperAdminUser = await isSuperAdmin(ctx, identity.subject);
+    const isSuperAdminUser = await isSuperAdmin(ctx, currentUser.clerkId);
     if (!isSuperAdminUser) {
       throw new Error('Unauthorized: Super admin access required');
     }
 
-    // Get the current super admin's user record
-    const currentUser = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', (q) => q.eq('clerkId', identity.subject))
-      .first();
-
     // Prevent self-demotion
-    if (currentUser && currentUser._id === args.userId) {
+    if (currentUser._id === args.userId) {
       throw new Error('Cannot revoke your own admin privileges');
     }
 
@@ -418,13 +362,10 @@ export const promoteToSuperAdmin = mutation({
     userId: v.id('users'),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Not authenticated');
-    }
+    const currentUser = await requireUser(ctx);
 
     // Verify super admin
-    const isSuperAdminUser = await isSuperAdmin(ctx, identity.subject);
+    const isSuperAdminUser = await isSuperAdmin(ctx, currentUser.clerkId);
     if (!isSuperAdminUser) {
       throw new Error('Unauthorized: Super admin access required');
     }
@@ -452,29 +393,14 @@ export const promoteToSuperAdmin = mutation({
 
 /**
  * Initialize the first super admin (only works when no admins exist).
- * This is used for bootstrapping a production instance.
- * 
- * Race condition fix: Uses atomic unique constraint check via system initialization
- * record and maintains idempotency for repeated calls by the same user.
+ * Convex serializes mutations, so the read-check-insert pattern is atomic.
+ * Idempotent: calling again by the same already-promoted user returns early.
  */
 export const initializeFirstSuperAdmin = mutation({
   args: {},
   handler: async (ctx) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Not authenticated');
-    }
+    const user = await requireUser(ctx);
 
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', (q) => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error('User not found');
-    }
-
-    // IDEMPOTENCY: Check if this user is already a super admin
     const existingUserRole = await ctx.db
       .query('adminRoles')
       .withIndex('by_user_id', (q) => q.eq('userId', user._id))
@@ -484,8 +410,6 @@ export const initializeFirstSuperAdmin = mutation({
       return { success: true, message: 'You are already the super admin.', alreadyInitialized: true };
     }
 
-    // UNIQUE CONSTRAINT CHECK: Atomic check for any existing admin
-    // This prevents race conditions by checking immediately before insert
     const anyAdmin = await ctx.db.query('adminRoles').first();
     if (anyAdmin) {
       throw new Error('Admin system already initialized');
@@ -493,33 +417,22 @@ export const initializeFirstSuperAdmin = mutation({
 
     const now = Date.now();
 
-    // Create the first super admin
     const adminRoleId = await ctx.db.insert('adminRoles', {
       userId: user._id,
-      clerkId: identity.subject,
+      clerkId: user.clerkId,
       role: 'super_admin',
       createdAt: now,
     });
 
-    // AUDIT TRAIL: Create an audit record for this initialization
     await ctx.db.insert('adminRequests', {
       userId: user._id,
-      clerkId: identity.subject,
+      clerkId: user.clerkId,
       reason: 'System initialization: First super admin created via initializeFirstSuperAdmin mutation',
       requestType: 'super_admin',
       status: 'approved',
       createdAt: now,
       reviewedAt: now,
     });
-
-    // RACE CONDITION VERIFICATION: Verify we're the only admin after insert
-    // If another admin exists (from concurrent mutation), we have a race
-    const allAdmins = await ctx.db.query('adminRoles').take(10);
-    if (allAdmins.length > 1) {
-      // Rollback our insertion - another admin was created concurrently
-      await ctx.db.delete(adminRoleId);
-      throw new Error('Admin system already initialized by another user');
-    }
 
     return { success: true, message: 'You are now the first super admin!' };
   },
@@ -533,10 +446,7 @@ export const requestSuperAdminPromotion = mutation({
     reason: v.string(),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Not authenticated');
-    }
+    const user = await requireUser(ctx);
 
     // Validate reason
     if (args.reason.trim().length < 10) {
@@ -544,23 +454,14 @@ export const requestSuperAdminPromotion = mutation({
     }
 
     // Verify user is an admin but not super admin
-    const isAdminUser = await isAdmin(ctx, identity.subject);
+    const isAdminUser = await isAdmin(ctx, user.clerkId);
     if (!isAdminUser) {
       throw new Error('You must be an admin to request super admin promotion');
     }
 
-    const isSuperAdminUser = await isSuperAdmin(ctx, identity.subject);
+    const isSuperAdminUser = await isSuperAdmin(ctx, user.clerkId);
     if (isSuperAdminUser) {
       throw new Error('You are already a super admin');
-    }
-
-    const user = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', (q) => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!user) {
-      throw new Error('User not found');
     }
 
     await enforceRateLimit(ctx, user._id, 'REQUEST_SUPER_ADMIN_PROMOTION');
@@ -568,8 +469,7 @@ export const requestSuperAdminPromotion = mutation({
     // Check for existing pending request
     const existingRequest = await ctx.db
       .query('adminRequests')
-      .withIndex('by_user_id', (q) => q.eq('userId', user._id))
-      .filter((q) => q.eq(q.field('status'), 'pending'))
+      .withIndex('by_user_id_status', (q) => q.eq('userId', user._id).eq('status', 'pending'))
       .first();
 
     if (existingRequest) {
@@ -579,7 +479,7 @@ export const requestSuperAdminPromotion = mutation({
     // Create the super admin request (reusing adminRequests table)
     const requestId = await ctx.db.insert('adminRequests', {
       userId: user._id,
-      clerkId: identity.subject,
+      clerkId: user.clerkId,
       reason: args.reason.trim(),
       requestType: 'super_admin',
       status: 'pending',
@@ -735,6 +635,8 @@ export const getAdminDashboardStats = query({
     today.setHours(0, 0, 0, 0);
     const todayTimestamp = today.getTime();
 
+    const sixMonthsAgo = todayTimestamp - 180 * 24 * 60 * 60 * 1000;
+
     const [
       usersSample,
       whispersSample,
@@ -743,12 +645,12 @@ export const getAdminDashboardStats = query({
       adminRolesSample,
       activeConversationsSample,
     ] = await Promise.all([
-      ctx.db.query('users').filter((q) => q.neq(q.field('isDeleted'), true)).take(10000),
-      ctx.db.query('whispers').withIndex('by_created_at').take(10000),
-      ctx.db.query('whispers').withIndex('by_created_at', (q) => q.gte('createdAt', todayTimestamp)).take(10000),
-      ctx.db.query('adminRequests').withIndex('by_status', (q) => q.eq('status', 'pending')).take(10000),
-      ctx.db.query('adminRoles').take(10000),
-      ctx.db.query('conversations').withIndex('by_status', (q) => q.eq('status', 'active')).take(10000),
+      ctx.db.query('users').withIndex('by_is_deleted', (q) => q.eq('isDeleted', undefined)).take(1000),
+      ctx.db.query('whispers').withIndex('by_created_at', (q) => q.gte('createdAt', sixMonthsAgo)).take(1000),
+      ctx.db.query('whispers').withIndex('by_created_at', (q) => q.gte('createdAt', todayTimestamp)).take(1000),
+      ctx.db.query('adminRequests').withIndex('by_status', (q) => q.eq('status', 'pending')).take(1000),
+      ctx.db.query('adminRoles').take(100),
+      ctx.db.query('conversations').withIndex('by_status', (q) => q.eq('status', 'active')).take(100),
     ]);
 
     return {

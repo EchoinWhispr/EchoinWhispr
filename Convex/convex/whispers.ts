@@ -1,7 +1,6 @@
 import { v } from 'convex/values';
 import { mutation, query, internalMutation } from './_generated/server';
 import { internal } from './_generated/api';
-import { Doc, Id } from './_generated/dataModel';
 import { enforceRateLimit, recordRateLimitedAction } from './rateLimits';
 import { VALIDATION } from './schema';
 import { requireUser } from './auth';
@@ -112,9 +111,8 @@ export const getReceivedWhispers = query({
 
     const result = await ctx.db
       .query('whispers')
-      .withIndex('by_recipient_conversation', q => 
-        q.eq('recipientId', user._id).eq('conversationId', undefined)
-      )
+      .withIndex('by_recipient', q => q.eq('recipientId', user._id))
+      .filter(q => q.eq(q.field('conversationId'), undefined))
       .order('desc')
       .paginate(args.paginationOpts);
 
@@ -143,9 +141,8 @@ export const getAllReceivedWhispers = query({
 
     const whispers = await ctx.db
       .query('whispers')
-      .withIndex('by_recipient_conversation', q => 
-        q.eq('recipientId', user._id).eq('conversationId', undefined)
-      )
+      .withIndex('by_recipient', q => q.eq('recipientId', user._id))
+      .filter(q => q.eq(q.field('conversationId'), undefined))
       .order('desc')
       .take(500);
 
@@ -175,9 +172,8 @@ export const getReceivedWhispersCount = query({
     // Count whispers not part of a conversation (standalone whispers)
     const whispers = await ctx.db
       .query('whispers')
-      .withIndex('by_recipient_conversation', q => 
-        q.eq('recipientId', user._id).eq('conversationId', undefined)
-      )
+      .withIndex('by_recipient', q => q.eq('recipientId', user._id))
+      .filter(q => q.eq(q.field('conversationId'), undefined))
       .take(100); // Cap at 100 for performance
 
     // Indicate if count was capped at 100
@@ -268,7 +264,7 @@ export const getUnreadWhisperCount = query({
     // This returns an approximate count for UI purposes without fetching all records
     const unreadWhispers = await ctx.db
       .query('whispers')
-      .withIndex('by_recipient_conversation_isRead', q => 
+      .withIndex('by_recipient_conversation_isRead', q =>
         q.eq('recipientId', user._id).eq('conversationId', undefined).eq('isRead', false)
       )
       .take(100); // Cap at 100 for performance
@@ -553,19 +549,7 @@ export const scheduleWhisper = mutation({
       throw new Error(`Scheduled time cannot be more than ${VALIDATION.WHISPER_MAX_SCHEDULE_DAYS} days in the future`);
     }
 
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error('Not authenticated');
-    }
-
-    const sender = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!sender) {
-      throw new Error('Sender not found');
-    }
+    const sender = await requireUser(ctx);
 
     await enforceRateLimit(ctx, sender._id, 'SCHEDULE_WHISPER');
 
@@ -628,26 +612,35 @@ export const getScheduledWhispers = query({
 });
 
 // Process scheduled whispers (Internal CRON job)
+// Processes in batches of 200 to avoid OOM if many whispers are due.
 export const processScheduledWhispers = internalMutation({
   args: {},
   handler: async (ctx) => {
     const now = Date.now();
+    let totalProcessed = 0;
 
-    const dueWhispers = await ctx.db
-      .query('whispers')
-      .withIndex('by_scheduled', q => 
-        q.eq('isScheduled', true).lte('scheduledFor', now)
-      )
-      .collect();
+    // eslint-disable-next-line no-constant-condition
+    while (true) {
+      const dueWhispers = await ctx.db
+        .query('whispers')
+        .withIndex('by_scheduled', q => 
+          q.eq('isScheduled', true).lte('scheduledFor', now)
+        )
+        .take(200);
 
-    for (const whisper of dueWhispers) {
-      await ctx.db.patch(whisper._id, {
-        isScheduled: false,
-        scheduledFor: undefined,
-      });
+      if (dueWhispers.length === 0) break;
+
+      for (const whisper of dueWhispers) {
+        await ctx.db.patch(whisper._id, {
+          isScheduled: false,
+          scheduledFor: undefined,
+        });
+      }
+
+      totalProcessed += dueWhispers.length;
     }
 
-    return { processed: dueWhispers.length };
+    return { processed: totalProcessed };
   },
 });
 

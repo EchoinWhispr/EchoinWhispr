@@ -11,7 +11,6 @@ import { WhisperWithSender } from '../types';
 import { useMarkAsRead } from '../hooks/useWhispers';
 import { formatDistanceToNow } from 'date-fns';
 import { useFeatureFlag } from '@/hooks/useFeatureFlags';
-import { FEATURE_FLAGS } from '@/config/featureFlags';
 import { 
   CheckCircle2, Clock, User, MapPin, MessageCircle, 
   Link as LinkIcon, ImageOff, Eye
@@ -81,6 +80,13 @@ export const WhisperCard: React.FC<WhisperCardProps> = React.memo(
     const isConversationEvolutionEnabled = useFeatureFlag('CONVERSATION_EVOLUTION');
     const isWhisperChainsEnabled = useFeatureFlag('WHISPER_CHAINS');
     const isLocationEnabled = useFeatureFlag('LOCATION_BASED_FEATURES');
+    const isImageUploadsEnabled = useFeatureFlag('IMAGE_UPLOADS');
+    const CONTENT_PREVIEW_LENGTH = 200;
+    const [showFullContent, setShowFullContent] = useState(false);
+    const isContentLong = whisper.content.length > CONTENT_PREVIEW_LENGTH;
+    const displayContent = showFullContent || !isContentLong
+      ? whisper.content
+      : whisper.content.slice(0, CONTENT_PREVIEW_LENGTH) + '...';
 
     const handleMarkAsRead = useCallback(async (e: React.MouseEvent) => {
       e.preventDefault();
@@ -172,11 +178,23 @@ export const WhisperCard: React.FC<WhisperCardProps> = React.memo(
 
                 {/* Whisper content */}
                 <div className={`text-sm leading-relaxed break-words whitespace-pre-wrap ${whisper.isRead ? 'text-muted-foreground' : 'text-foreground'}`}>
-                  {whisper.content}
+                  {displayContent}
+                  {isContentLong && (
+                    <button
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setShowFullContent(v => !v);
+                      }}
+                      className="ml-1 text-primary hover:text-accent text-xs font-medium"
+                    >
+                      {showFullContent ? 'Show less' : 'Read more'}
+                    </button>
+                  )}
                 </div>
 
                 {/* Image display */}
-                {FEATURE_FLAGS.IMAGE_UPLOADS && whisper.imageUrl && (
+                {isImageUploadsEnabled && whisper.imageUrl && (
                   <ImageWithFallback 
                     src={whisper.imageUrl} 
                     alt="Whisper image attachment" 

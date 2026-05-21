@@ -7,13 +7,14 @@ import { validateFile } from '../../lib/fileValidation';
 import { Button } from './button';
 import { Card } from './card';
 import { Upload, X, FileImage, AlertCircle } from 'lucide-react';
+import type { Id } from '../../lib/convex';
 
 /**
  * Props for the FileUpload component
  */
 export interface FileUploadProps {
   /** Callback when a file is successfully uploaded */
-  onFileUploaded?: (storageId: string, url: string) => void;
+  onFileUploaded?: (storageId: Id<'_storage'>, url: string) => void;
   /** Callback when upload fails */
   onUploadError?: (error: string) => void;
   /** Callback when upload is cancelled */

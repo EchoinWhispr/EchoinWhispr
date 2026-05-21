@@ -3,17 +3,18 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import { uploadFile, getFileUrl, deleteFile } from '../lib/fileStorage';
 import { validateFile } from '../lib/fileValidation';
+import type { Id } from '../lib/convex';
 
 export interface FileUploadState {
   isUploading: boolean;
   progress: number;
   error: string | null;
-  storageId: string | null;
+  storageId: Id<'_storage'> | null;
   url: string | null;
 }
 
 export interface FileUploadResult {
-  storageId: string;
+  storageId: Id<'_storage'>;
   url: string;
 }
 
@@ -153,7 +154,7 @@ export function useFileUpload() {
     }
   }, []);
 
-  const remove = useCallback(async (storageId: string): Promise<void> => {
+  const remove = useCallback(async (storageId: Id<'_storage'>): Promise<void> => {
     try {
       await deleteFile(storageId);
       if (isMountedRef.current) {

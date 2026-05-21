@@ -43,6 +43,7 @@ export default defineSchema({
     createdAt: v.number(),
   })
     .index('by_user_id', ['userId'])
+    .index('by_user_id_status', ['userId', 'status'])
     .index('by_status', ['status']),
 
   // Users table - synced with Clerk
@@ -94,6 +95,7 @@ export default defineSchema({
     .index('by_career', ['career'])
     .index('by_mood', ['mood'])
     .index('by_life_phase', ['lifePhase'])
+    .index('by_is_deleted', ['isDeleted'])
     .index('by_updated_at', ['updatedAt']),
 
   // Whispers table - core messaging functionality
@@ -214,6 +216,7 @@ export default defineSchema({
     .index('by_user_id', ['userId'])
     .index('by_friend_id', ['friendId'])
     .index('by_user_friend', ['userId', 'friendId'])
+    .index('by_user_friend_status', ['userId', 'friendId', 'status'])
     .index('by_status', ['status'])
     .index('by_user_status', ['userId', 'status'])
     .index('by_friend_status', ['friendId', 'status']),
@@ -392,6 +395,8 @@ export default defineSchema({
     .index('by_skill_type', ['skillName', 'type'])
     .index('by_type', ['type'])
     .index('by_category', ['category'])
+    .index('by_category_type', ['category', 'type'])
+    .index('by_user_skill_type', ['userId', 'skillName', 'type'])
     .searchIndex('search_skills', {
       searchField: 'skillName',
       filterFields: ['type', 'category'],
@@ -430,6 +435,7 @@ export default defineSchema({
     .index('by_target', ['targetId'])
     .index('by_conversation', ['conversationId'])
     .index('by_conversation_requester', ['conversationId', 'requesterId']) // OPTIMIZATION: Finding reqs from user in convo
+    .index('by_conversation_requester_status', ['conversationId', 'requesterId', 'status']) // OPTIMIZATION: Filter-free status checks
     .index('by_conversation_target_status', ['conversationId', 'targetId', 'status']) // OPTIMIZATION: Finding pending reqs to user in convo
     .index('by_status', ['status']),
 
@@ -461,7 +467,8 @@ export default defineSchema({
   })
     .index('by_conversation', ['conversationId'])
     .index('by_user', ['userId'])
-    .index('by_conversation_user', ['conversationId', 'userId']), // OPTIMIZATION: Check existing typing indicator
+    .index('by_conversation_user', ['conversationId', 'userId']) // OPTIMIZATION: Check existing typing indicator
+    .index('by_last_typing_at', ['lastTypingAt']),
 
   // === Echo Chamber Typing (for group chats) ===
   echoChamberTyping: defineTable({
@@ -471,7 +478,8 @@ export default defineSchema({
     lastTypingAt: v.number(),
   })
     .index('by_chamber', ['chamberId'])
-    .index('by_chamber_user', ['chamberId', 'userId']), // OPTIMIZATION: For efficient typing indicator lookup
+    .index('by_chamber_user', ['chamberId', 'userId']) // OPTIMIZATION: For efficient typing indicator lookup
+    .index('by_last_typing_at', ['lastTypingAt']),
 
   // === File Metadata - Track file ownership for authorization ===
   fileMetadata: defineTable({
@@ -522,8 +530,8 @@ export default defineSchema({
     updatedAt: v.number(),
   })
     .index('by_user_id', ['userId'])
+    .index('by_user_id_status', ['userId', 'status'])
     .index('by_status', ['status'])
     .index('by_requested_username', ['requestedUsername'])
     .index('by_requested_username_status', ['requestedUsername', 'status']), // OPTIMIZATION: Checking pending reservations
 });
-

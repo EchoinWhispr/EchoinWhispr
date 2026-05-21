@@ -54,7 +54,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
     ...props
   }, ref) => {
     const formContext = useFormContext();
-    const fieldError = formContext?.formState.errors[name!]?.message as string;
+    const fieldError = formContext?.formState?.errors[name!]?.message as string | undefined;
     const hasError = error || fieldError;
     const inputId = id || name;
 

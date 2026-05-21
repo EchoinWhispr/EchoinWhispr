@@ -1,4 +1,4 @@
-import convex, { api } from '@/lib/convex';
+import convex, { api, Id } from '@/lib/convex';
 
 /**
  * File storage service for handling file uploads and management using Convex's file storage.
@@ -8,10 +8,10 @@ import convex, { api } from '@/lib/convex';
 /**
  * Uploads a file to Convex file storage and returns the storage ID.
  * @param file - The File object to upload
- * @returns Promise<string> - The storage ID of the uploaded file
+ * @returns Promise<Id<'_storage'>> - The storage ID of the uploaded file
  * @throws Error if upload fails
  */
-export async function uploadFile(file: File, signal?: AbortSignal): Promise<string> {
+export async function uploadFile(file: File, signal?: AbortSignal): Promise<Id<'_storage'>> {
   try {
     if (!convex) {
       throw new Error('Convex client not initialized. Check your environment variables.');
@@ -32,7 +32,10 @@ export async function uploadFile(file: File, signal?: AbortSignal): Promise<stri
     }
 
     const result = await response.json();
-    return result.storageId;
+    if (!result?.storageId) {
+      throw new Error('Upload response missing storage ID');
+    }
+    return result.storageId as Id<'_storage'>;
   } catch (error) {
     if (error instanceof Error && error.name === 'AbortError') {
       throw error;
@@ -48,7 +51,7 @@ export async function uploadFile(file: File, signal?: AbortSignal): Promise<stri
  * @returns Promise<string> - The public URL string
  * @throws Error if URL retrieval fails
  */
-export async function getFileUrl(storageId: string, _signal?: AbortSignal): Promise<string> {
+export async function getFileUrl(storageId: Id<'_storage'>, _signal?: AbortSignal): Promise<string> {
   try {
     if (!convex) {
       throw new Error('Convex client not initialized. Check your environment variables.');
@@ -72,7 +75,7 @@ export async function getFileUrl(storageId: string, _signal?: AbortSignal): Prom
  * @param storageId - The storage ID of the file to delete
  * @throws Error if deletion fails
  */
-export async function deleteFile(storageId: string): Promise<void> {
+export async function deleteFile(storageId: Id<'_storage'>): Promise<void> {
   try {
     if (!convex) {
       throw new Error('Convex client not initialized. Check your environment variables.');

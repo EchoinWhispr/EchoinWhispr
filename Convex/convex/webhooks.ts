@@ -2,7 +2,32 @@ import { action, ActionCtx } from './_generated/server';
 import { internal } from './_generated/api';
 import { v } from 'convex/values';
 import { Webhook } from 'svix';
-import { WebhookEvent, UserJSON } from '@clerk/clerk-sdk-node';
+import { WebhookEvent } from '@clerk/clerk-sdk-node';
+import { z } from 'zod';
+
+// Zod schemas for Clerk webhook event data (runtime validation)
+const emailAddressSchema = z.object({
+  id: z.string(),
+  email_address: z.string(),
+  verified: z.boolean().optional(),
+  primary: z.boolean().optional(),
+});
+
+const clerkUserDataSchema = z.object({
+  id: z.string(),
+  email_addresses: z.array(emailAddressSchema).optional(),
+  first_name: z.string().nullable().optional(),
+  last_name: z.string().nullable().optional(),
+  username: z.string().nullable().optional(),
+  image_url: z.string().optional(),
+  deleted: z.boolean().optional(),
+});
+
+const clerkUserDeletedDataSchema = z.object({
+  id: z.string(),
+  object: z.literal('user'),
+  deleted: z.boolean(),
+});
 
 // Webhook handler for Clerk events
 export const clerkWebhook = action({
@@ -26,22 +51,21 @@ export const clerkWebhook = action({
       console.log(`Received Clerk webhook: ${type}`);
 
       switch (type) {
-        case 'user.created':
-          await handleUserCreated(ctx, data);
+        case 'user.created': {
+          const validated = clerkUserDataSchema.parse(data);
+          await handleUserCreated(ctx, validated);
           break;
-        case 'user.updated':
-          await handleUserUpdated(ctx, data);
+        }
+        case 'user.updated': {
+          const validated = clerkUserDataSchema.parse(data);
+          await handleUserUpdated(ctx, validated);
           break;
-    case "user.deleted":
-      {
-        const data: UserDeletedEventData = {
-          id: event.data.id,
-          deleted: event.data.deleted,
-          object: "user",
-        };
-        await handleUserDeleted(ctx, data);
-      }
-      break;
+        }
+        case 'user.deleted': {
+          const validated = clerkUserDeletedDataSchema.parse(data);
+          await handleUserDeleted(ctx, validated);
+          break;
+        }
         default:
           console.log(`Unhandled webhook event type: ${type}`);
       }
@@ -88,36 +112,39 @@ async function verifyWebhookSignature(
   }
 }
 
-// Handle user creation event
-async function handleUserCreated(ctx: ActionCtx, userData: UserJSON) {
-  try {
-    const {
-      id: clerkId,
-      email_addresses,
-      first_name,
-      last_name,
-      username,
-    } = userData;
+// Extract email and username from validated Clerk user data
+function extractUserInfo(data: z.infer<typeof clerkUserDataSchema>) {
+  const primaryEmail = data.email_addresses?.[0]?.email_address;
+  if (!primaryEmail) {
+    return null;
+  }
+  return {
+    clerkId: data.id,
+    email: primaryEmail,
+    username: data.username || generateUsernameFromEmail(primaryEmail),
+    firstName: data.first_name || undefined,
+    lastName: data.last_name || undefined,
+  };
+}
 
-    // Extract primary email
-    const primaryEmail = email_addresses?.[0]?.email_address;
-    if (!primaryEmail) {
-      console.error('No email found for user:', clerkId);
+// Handle user creation event
+async function handleUserCreated(ctx: ActionCtx, userData: z.infer<typeof clerkUserDataSchema>) {
+  try {
+    const info = extractUserInfo(userData);
+    if (!info) {
+      console.error('No email found for user:', userData.id);
       return;
     }
 
-    // Generate username if not provided
-    const userUsername = username || generateUsernameFromEmail(primaryEmail);
-
     await ctx.runMutation(internal.users.createOrUpdateUser, {
-      clerkId,
-      username: userUsername,
-      email: primaryEmail,
-      firstName: first_name || undefined,
-      lastName: last_name || undefined,
+      clerkId: info.clerkId,
+      username: info.username,
+      email: info.email,
+      firstName: info.firstName,
+      lastName: info.lastName,
     });
 
-    console.log(`User created: ${clerkId} (${userUsername})`);
+    console.log(`User created: ${info.clerkId} (${info.username})`);
   } catch (error) {
     console.error('Error handling user creation:', error);
     throw error;
@@ -125,57 +152,36 @@ async function handleUserCreated(ctx: ActionCtx, userData: UserJSON) {
 }
 
 // Handle user update event
-async function handleUserUpdated(ctx: ActionCtx, userData: UserJSON) {
+async function handleUserUpdated(ctx: ActionCtx, userData: z.infer<typeof clerkUserDataSchema>) {
   try {
-    const {
-      id: clerkId,
-      email_addresses,
-      first_name,
-      last_name,
-      username,
-    } = userData;
-
-    // Extract primary email
-    const primaryEmail = email_addresses?.[0]?.email_address;
-    if (!primaryEmail) {
-      console.error('No email found for user:', clerkId);
+    const info = extractUserInfo(userData);
+    if (!info) {
+      console.error('No email found for user:', userData.id);
       return;
     }
 
-    // Use existing username or generate new one
-    const userUsername = username || generateUsernameFromEmail(primaryEmail);
-
     await ctx.runMutation(internal.users.createOrUpdateUser, {
-      clerkId,
-      username: userUsername,
-      email: primaryEmail,
-      firstName: first_name || undefined,
-      lastName: last_name || undefined,
+      clerkId: info.clerkId,
+      username: info.username,
+      email: info.email,
+      firstName: info.firstName,
+      lastName: info.lastName,
     });
 
-    console.log(`User updated: ${clerkId} (${userUsername})`);
+    console.log(`User updated: ${info.clerkId} (${info.username})`);
   } catch (error) {
     console.error('Error handling user update:', error);
     throw error;
   }
 }
 
-interface UserDeletedEventData {
-  id?: string;
-  object: 'user';
-  deleted: boolean;
-}
-
 // Handle user deletion event
 async function handleUserDeleted(
   ctx: ActionCtx,
-  userData: UserDeletedEventData
+  userData: z.infer<typeof clerkUserDeletedDataSchema>
 ) {
   try {
     const { id: clerkId } = userData;
-    if (clerkId === undefined) {
-      throw new Error("Clerk ID is undefined in webhook event data.");
-    }
 
     // Find user by clerkId
     const user = await ctx.runQuery(internal.users.getByClerkId, { clerkId });
@@ -184,12 +190,7 @@ async function handleUserDeleted(
       return;
     }
 
-    // Note: In a production app, you might want to soft delete or archive user data
-    // For now, we'll just log the deletion
     console.log(`User deletion requested for: ${clerkId} (${user.username})`);
-
-    // Optional: You could implement user deletion logic here
-    // await ctx.runMutation(api.users.deleteUser, { userId: user._id });
   } catch (error) {
     console.error('Error handling user deletion:', error);
     throw error;
