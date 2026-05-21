@@ -467,7 +467,8 @@ export default defineSchema({
   })
     .index('by_conversation', ['conversationId'])
     .index('by_user', ['userId'])
-    .index('by_conversation_user', ['conversationId', 'userId']), // OPTIMIZATION: Check existing typing indicator
+    .index('by_conversation_user', ['conversationId', 'userId']) // OPTIMIZATION: Check existing typing indicator
+    .index('by_last_typing_at', ['lastTypingAt']),
 
   // === Echo Chamber Typing (for group chats) ===
   echoChamberTyping: defineTable({
@@ -477,7 +478,8 @@ export default defineSchema({
     lastTypingAt: v.number(),
   })
     .index('by_chamber', ['chamberId'])
-    .index('by_chamber_user', ['chamberId', 'userId']), // OPTIMIZATION: For efficient typing indicator lookup
+    .index('by_chamber_user', ['chamberId', 'userId']) // OPTIMIZATION: For efficient typing indicator lookup
+    .index('by_last_typing_at', ['lastTypingAt']),
 
   // === File Metadata - Track file ownership for authorization ===
   fileMetadata: defineTable({
@@ -533,4 +535,3 @@ export default defineSchema({
     .index('by_requested_username', ['requestedUsername'])
     .index('by_requested_username_status', ['requestedUsername', 'status']), // OPTIMIZATION: Checking pending reservations
 });
-

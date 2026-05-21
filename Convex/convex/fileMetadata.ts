@@ -1,5 +1,6 @@
 import { v } from 'convex/values';
 import { internalQuery, internalMutation } from './_generated/server';
+import { paginationOptsValidator } from 'convex/server';
 
 export const getByStorageId = internalQuery({
   args: { storageId: v.id('_storage') },
@@ -59,8 +60,10 @@ export const deleteByStorageId = internalMutation({
 });
 
 export const getAll = internalQuery({
-  args: {},
-  handler: async (ctx) => {
-    return await ctx.db.query('fileMetadata').take(1000);
+  args: {
+    paginationOpts: paginationOptsValidator,
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.query('fileMetadata').paginate(args.paginationOpts);
   },
 });

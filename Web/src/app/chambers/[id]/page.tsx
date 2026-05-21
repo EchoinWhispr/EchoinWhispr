@@ -86,10 +86,31 @@ export default function ChamberViewPage() {
 
   // Track initial unread count for the session (stored once on mount)
   const [initialUnreadCount, setInitialUnreadCount] = useState<number | null>(null);
+  const hasAutoScrolledInitiallyRef = useRef(false);
+  const lastVisibleMessageIdRef = useRef<string | null>(null);
 
-  // Auto-scroll to bottom
+  // Reset scroll tracking when chamber changes
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    hasAutoScrolledInitiallyRef.current = false;
+    lastVisibleMessageIdRef.current = null;
+  }, [validId]);
+
+  // Auto-scroll to bottom on initial load and newly appended messages only
+  useEffect(() => {
+    if (messages.length === 0) return;
+
+    const lastMessageId = String(messages[messages.length - 1]?._id ?? '');
+    const shouldScrollInitial = !hasAutoScrolledInitiallyRef.current;
+    const shouldScrollForNewMessage =
+      lastVisibleMessageIdRef.current !== null &&
+      lastVisibleMessageIdRef.current !== lastMessageId;
+
+    if (shouldScrollInitial || shouldScrollForNewMessage) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      hasAutoScrolledInitiallyRef.current = true;
+    }
+
+    lastVisibleMessageIdRef.current = lastMessageId;
   }, [messages]);
 
   // Cleanup typing timeout on unmount

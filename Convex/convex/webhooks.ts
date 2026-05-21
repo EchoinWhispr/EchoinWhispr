@@ -24,7 +24,7 @@ const clerkUserDataSchema = z.object({
 });
 
 const clerkUserDeletedDataSchema = z.object({
-  id: z.string().optional(),
+  id: z.string(),
   object: z.literal('user'),
   deleted: z.boolean(),
 });
@@ -182,9 +182,6 @@ async function handleUserDeleted(
 ) {
   try {
     const { id: clerkId } = userData;
-    if (clerkId === undefined) {
-      throw new Error("Clerk ID is undefined in webhook event data.");
-    }
 
     // Find user by clerkId
     const user = await ctx.runQuery(internal.users.getByClerkId, { clerkId });

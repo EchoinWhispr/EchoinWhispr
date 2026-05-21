@@ -1,6 +1,7 @@
 import { action, internalAction, internalMutation } from './_generated/server';
 import { v } from 'convex/values';
 import { internal } from './_generated/api';
+import type { Doc } from './_generated/dataModel';
 
 /**
  * File storage functions for handling file uploads and management.
@@ -145,24 +146,48 @@ export const recordUpload = action({
 export const cleanupOrphanedFiles = internalAction({
   args: {},
   handler: async (ctx) => {
-    const metadataRecords = await ctx.runQuery(internal.fileMetadata.getAll, {});
-
     let deletedCount = 0;
-    for (const record of metadataRecords) {
-      try {
-        const url = await ctx.storage.getUrl(record.storageId);
-        if (!url) {
-          await ctx.runMutation(internal.fileMetadata.deleteByStorageId, {
-            storageId: record.storageId,
-          });
-          deletedCount++;
-        }
-      } catch {
-        await ctx.runMutation(internal.fileMetadata.deleteByStorageId, {
-          storageId: record.storageId,
-        });
-        deletedCount++;
+    let cursor: string | null = null;
+    let isDone = false;
+    const pageSize = 100;
+    const concurrency = 20;
+
+    while (!isDone) {
+      const metadataPage = (await ctx.runQuery(internal.fileMetadata.getAll, {
+        paginationOpts: {
+          cursor,
+          numItems: pageSize,
+        },
+      })) as {
+        page: Doc<'fileMetadata'>[];
+        continueCursor: string | null;
+        isDone: boolean;
+      };
+
+      for (let i = 0; i < metadataPage.page.length; i += concurrency) {
+        const batch = metadataPage.page.slice(i, i + concurrency);
+        const results = await Promise.all(
+          batch.map(async (record: Doc<'fileMetadata'>) => {
+            try {
+              const url = await ctx.storage.getUrl(record.storageId);
+              if (url) {
+                return 0;
+              }
+            } catch {
+              // Missing storage file - remove stale metadata below.
+            }
+
+            await ctx.runMutation(internal.fileMetadata.deleteByStorageId, {
+              storageId: record.storageId,
+            });
+            return 1;
+          })
+        );
+        deletedCount += results.reduce<number>((sum, current) => sum + current, 0);
       }
+
+      cursor = metadataPage.continueCursor;
+      isDone = metadataPage.isDone;
     }
 
     return { deleted: deletedCount };

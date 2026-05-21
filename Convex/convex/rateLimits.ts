@@ -136,7 +136,7 @@ export const cleanupTypingIndicators = internalMutation({
 
     const stale1to1 = await ctx.db
       .query('typingIndicators')
-      .filter((q) => q.lt(q.field('lastTypingAt'), staleBefore))
+      .withIndex('by_last_typing_at', (q) => q.lt('lastTypingAt', staleBefore))
       .take(200);
 
     for (const t of stale1to1) {
@@ -146,7 +146,7 @@ export const cleanupTypingIndicators = internalMutation({
 
     const staleChamber = await ctx.db
       .query('echoChamberTyping')
-      .filter((q) => q.lt(q.field('lastTypingAt'), staleBefore))
+      .withIndex('by_last_typing_at', (q) => q.lt('lastTypingAt', staleBefore))
       .take(200);
 
     for (const t of staleChamber) {

@@ -310,11 +310,10 @@ function MoodMatchTab() {
   const matchResult = useQuery(api.users.findMoodMatch, triggerSearch ? { mood: mood || undefined } : 'skip');
 
   useEffect(() => {
-    if (matchResult) {
-      setMatch(matchResult);
-      setTriggerSearch(false);
-      setIsSearching(false);
-    }
+    if (matchResult === undefined) return;
+    setMatch(matchResult);
+    setTriggerSearch(false);
+    setIsSearching(false);
   }, [matchResult]);
 
   const handleFindMatch = () => {
