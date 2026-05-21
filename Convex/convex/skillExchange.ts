@@ -43,15 +43,18 @@ export const addSkill = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
 
+    const trimmedName = args.skillName.trim();
+    if (trimmedName.length < 1 || trimmedName.length > 100) {
+      throw new Error('Skill name must be between 1 and 100 characters');
+    }
+
     // Check if user already has this skill with same type
     const existing = await ctx.db
       .query("skills")
-      .withIndex("by_user", (q) => q.eq("userId", user._id))
-      .filter((q) => 
-        q.and(
-          q.eq(q.field("skillName"), args.skillName.toLowerCase()),
-          q.eq(q.field("type"), args.type)
-        )
+      .withIndex("by_user_skill_type", (q) => 
+        q.eq("userId", user._id)
+         .eq("skillName", args.skillName.toLowerCase())
+         .eq("type", args.type)
       )
       .first();
 
@@ -144,8 +147,8 @@ export const findSkillMatch = mutation({
       .withIndex("by_skill_type", (q) => 
         q.eq("skillName", args.skillName.toLowerCase()).eq("type", targetType)
       )
-      .filter((q) => q.neq(q.field("userId"), currentUser._id))
-      .collect();
+      .collect()
+      .then(rs => rs.filter(r => r.userId !== currentUser._id));
 
     if (matches.length === 0) {
       return null;
@@ -175,19 +178,7 @@ export const requestSkillExchange = mutation({
     message: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) {
-      throw new Error("Not authenticated");
-    }
-
-    const learner = await ctx.db
-      .query("users")
-      .withIndex("by_clerk_id", (q) => q.eq("clerkId", identity.subject))
-      .first();
-
-    if (!learner) {
-      throw new Error("User not found");
-    }
+    const learner = await requireUser(ctx);
 
     if (learner._id === args.teacherId) {
       throw new Error("You can't request to learn from yourself");
@@ -209,14 +200,12 @@ export const requestSkillExchange = mutation({
     const allPendingRequests = await ctx.db
       .query("skillMatches")
       .withIndex("by_learner", (q) => q.eq("learnerId", learner._id))
-      .filter((q) => 
-        q.and(
-          q.eq(q.field("teacherId"), args.teacherId),
-          q.eq(q.field("skillName"), skillNameLower),
-          q.eq(q.field("status"), "pending")
-        )
-      )
-      .collect();
+      .collect()
+      .then(rs => rs.filter(r => 
+        r.teacherId === args.teacherId && 
+        r.skillName === skillNameLower && 
+        r.status === "pending"
+      ));
 
     if (allPendingRequests.length > 1) {
       const oldestRequest = allPendingRequests.sort((a, b) => a.createdAt - b.createdAt)[0];
@@ -381,8 +370,9 @@ export const browseOfferedSkills = query({
     if (args.category) {
       query = ctx.db
         .query("skills")
-        .withIndex("by_category", (q) => q.eq("category", args.category))
-        .filter((q) => q.eq(q.field("type"), "offering"));
+        .withIndex("by_category_type", (q) => 
+          q.eq("category", args.category).eq("type", "offering")
+        );
     }
 
     const skills = await query.take(args.limit || 50);
@@ -429,8 +419,9 @@ export const browseSoughtSkills = query({
     if (args.category) {
       query = ctx.db
         .query("skills")
-        .withIndex("by_category", (q) => q.eq("category", args.category))
-        .filter((q) => q.eq(q.field("type"), "seeking"));
+        .withIndex("by_category_type", (q) => 
+          q.eq("category", args.category).eq("type", "seeking")
+        );
     }
 
     const skills = await query.take(args.limit || 50);

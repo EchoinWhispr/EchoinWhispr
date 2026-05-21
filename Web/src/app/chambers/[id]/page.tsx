@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { useQuery, useMutation } from 'convex/react';
+import { useQuery, useMutation, usePaginatedQuery } from 'convex/react';
 import { api } from '@/lib/convex';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -66,9 +66,10 @@ export default function ChamberViewPage() {
     api.echoChambers.getChamber, 
     validId ? { chamberId: validId as Id<'echoChambers'> } : 'skip'
   );
-  const messagesData = useQuery(
-    api.echoChambers.getMessages, 
-    validId ? { chamberId: validId as Id<'echoChambers'>, limit: 50 } : 'skip'
+  const { results: messages, status: messagesStatus, loadMore } = usePaginatedQuery(
+    api.echoChambers.getMessages,
+    validId ? { chamberId: validId as Id<'echoChambers'> } : 'skip',
+    { initialNumItems: 50 }
   );
   const typingUsers = useQuery(
     api.echoChambers.getTypingIndicators,
@@ -89,7 +90,7 @@ export default function ChamberViewPage() {
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messagesData?.messages]);
+  }, [messages]);
 
   // Cleanup typing timeout on unmount
   useEffect(() => {
@@ -105,14 +106,14 @@ export default function ChamberViewPage() {
   const hasUpdatedLastRead = useRef(false);
   
   useEffect(() => {
-    if (!validId || !chamber || !messagesData) return;
+    if (!validId || !chamber || !messages) return;
     
     // Store the initial unread count (only once)
     if (initialUnreadCount === null && chamber.userLastReadAt !== undefined) {
       const lastRead = chamber.userLastReadAt || 0;
       
       // Count unread messages (messages after lastReadAt)
-      const unreadMessages = messagesData.messages?.filter(
+      const unreadMessages = messages.filter(
         (msg) => msg.createdAt > lastRead
       ) || [];
       setInitialUnreadCount(unreadMessages.length);
@@ -123,7 +124,7 @@ export default function ChamberViewPage() {
       hasUpdatedLastRead.current = true;
       updateLastReadAt({ chamberId: validId as Id<'echoChambers'> }).catch(console.error);
     }
-  }, [validId, chamber, messagesData, initialUnreadCount, updateLastReadAt]);
+  }, [validId, chamber, messages, initialUnreadCount, updateLastReadAt]);
 
   // Handle ?settings=true query param
   useEffect(() => {
@@ -393,9 +394,21 @@ export default function ChamberViewPage() {
       {/* Messages */}
       <div className="flex-1 overflow-y-auto px-4 py-4">
         <div className="max-w-4xl mx-auto space-y-4">
-          {messagesData?.messages?.map((msg, index) => {
+          {messagesStatus === "CanLoadMore" && (
+            <div className="flex justify-center">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => loadMore(50)}
+                className="text-xs text-muted-foreground hover:text-foreground"
+              >
+                Load older messages
+              </Button>
+            </div>
+          )}
+          {messages?.map((msg, index) => {
             // Determine if this is the first unread message
-            const previousMsg = index > 0 ? messagesData.messages?.[index - 1] : null;
+            const previousMsg = index > 0 ? messages[index - 1] : null;
             const isFirstUnread = initialUnreadCount !== null && 
               initialUnreadCount > 0 &&
               chamber?.userLastReadAt !== undefined &&

@@ -17,6 +17,7 @@ export const RATE_LIMITS = {
   SCHEDULE_WHISPER: { limit: 5, windowMs: 60 * 60 * 1000 }, // 5 per hour
   REQUEST_ADMIN_PROMOTION: { limit: 3, windowMs: 24 * 60 * 60 * 1000 }, // 3 per day
   REQUEST_SUPER_ADMIN_PROMOTION: { limit: 3, windowMs: 24 * 60 * 60 * 1000 }, // 3 per day
+  UPDATE_PROFILE: { limit: 10, windowMs: 60 * 60 * 1000 }, // 10 per hour
 } as const;
 
 export type RateLimitAction = keyof typeof RATE_LIMITS;
@@ -120,6 +121,40 @@ export const cleanupOldRateLimits = internalMutation({
     }
 
     return { deleted: oldRecords.length };
+  },
+});
+
+/**
+ * Clean up stale typing indicators (both 1:1 and echo chamber).
+ * Run periodically via cron to prevent unbounded growth.
+ */
+export const cleanupTypingIndicators = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const staleBefore = Date.now() - 30_000; // 30 seconds
+    let totalDeleted = 0;
+
+    const stale1to1 = await ctx.db
+      .query('typingIndicators')
+      .filter((q) => q.lt(q.field('lastTypingAt'), staleBefore))
+      .take(200);
+
+    for (const t of stale1to1) {
+      await ctx.db.delete(t._id);
+    }
+    totalDeleted += stale1to1.length;
+
+    const staleChamber = await ctx.db
+      .query('echoChamberTyping')
+      .filter((q) => q.lt(q.field('lastTypingAt'), staleBefore))
+      .take(200);
+
+    for (const t of staleChamber) {
+      await ctx.db.delete(t._id);
+    }
+    totalDeleted += staleChamber.length;
+
+    return { deleted: totalDeleted };
   },
 });
 

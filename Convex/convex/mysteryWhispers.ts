@@ -1,6 +1,6 @@
 import { requireUser } from './auth';
 import { v } from 'convex/values';
-import { mutation, query } from './_generated/server';
+import { mutation, query, internalMutation } from './_generated/server';
 import { Doc, Id } from './_generated/dataModel';
 
 /**
@@ -13,15 +13,7 @@ export const sendMysteryWhisper = mutation({
     imageUrl: v.optional(v.string()),
   },
   handler: async (ctx, args) => {
-    const identity = await ctx.auth.getUserIdentity();
-    if (!identity) throw new Error('Not authenticated');
-
-    const sender = await ctx.db
-      .query('users')
-      .withIndex('by_clerk_id', q => q.eq('clerkId', identity.subject))
-      .first();
-
-    if (!sender) throw new Error('Sender not found');
+    const sender = await requireUser(ctx);
 
     // 1. Check Feature Flag
     const featureFlag = await ctx.db
@@ -170,5 +162,26 @@ export const getMysterySettings = query({
       .first();
 
     return setting;
+  },
+});
+
+/**
+ * Clean up old mystery whisper limit records (older than 90 days).
+ * Run periodically via cron to prevent unbounded table growth.
+ */
+export const cleanupOldLimits = internalMutation({
+  args: {},
+  handler: async (ctx) => {
+    const ninetyDaysAgo = Date.now() - 90 * 24 * 60 * 60 * 1000;
+    const oldLimits = await ctx.db
+      .query('mysteryWhisperLimits')
+      .filter((q) => q.lt(q.field('createdAt'), ninetyDaysAgo))
+      .take(500);
+
+    for (const limit of oldLimits) {
+      await ctx.db.delete(limit._id);
+    }
+
+    return { deleted: oldLimits.length };
   },
 });

@@ -1,4 +1,4 @@
-import { action, internalAction } from './_generated/server';
+import { action, internalAction, internalMutation } from './_generated/server';
 import { v } from 'convex/values';
 import { internal } from './_generated/api';
 
@@ -34,7 +34,7 @@ export const generateUploadUrl = action({
  */
 export const getUrl = action({
   args: {
-    storageId: v.string(),
+    storageId: v.id('_storage'),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -59,7 +59,7 @@ export const getUrl = action({
  */
 export const deleteFile = action({
   args: {
-    storageId: v.string(),
+    storageId: v.id('_storage'),
   },
   handler: async (ctx, args) => {
     const identity = await ctx.auth.getUserIdentity();
@@ -109,7 +109,7 @@ export const deleteFile = action({
  */
 export const recordUpload = action({
   args: {
-    storageId: v.string(),
+    storageId: v.id('_storage'),
     fileName: v.optional(v.string()),
     mimeType: v.optional(v.string()),
     size: v.optional(v.number()),
@@ -135,5 +135,36 @@ export const recordUpload = action({
       mimeType: args.mimeType,
       size: args.size,
     });
+  },
+});
+
+/**
+ * Clean up orphaned file metadata where the storage entry is missing.
+ * Run periodically via cron.
+ */
+export const cleanupOrphanedFiles = internalAction({
+  args: {},
+  handler: async (ctx) => {
+    const metadataRecords = await ctx.runQuery(internal.fileMetadata.getAll, {});
+
+    let deletedCount = 0;
+    for (const record of metadataRecords) {
+      try {
+        const url = await ctx.storage.getUrl(record.storageId);
+        if (!url) {
+          await ctx.runMutation(internal.fileMetadata.deleteByStorageId, {
+            storageId: record.storageId,
+          });
+          deletedCount++;
+        }
+      } catch {
+        await ctx.runMutation(internal.fileMetadata.deleteByStorageId, {
+          storageId: record.storageId,
+        });
+        deletedCount++;
+      }
+    }
+
+    return { deleted: deletedCount };
   },
 });

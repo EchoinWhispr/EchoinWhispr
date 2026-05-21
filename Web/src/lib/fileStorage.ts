@@ -1,4 +1,4 @@
-import convex, { api } from '@/lib/convex';
+import convex, { api, Id } from '@/lib/convex';
 
 /**
  * File storage service for handling file uploads and management using Convex's file storage.
@@ -53,7 +53,7 @@ export async function getFileUrl(storageId: string, _signal?: AbortSignal): Prom
     if (!convex) {
       throw new Error('Convex client not initialized. Check your environment variables.');
     }
-    const url = await convex.action(api.fileStorage.getUrl, { storageId });
+    const url = await convex.action(api.fileStorage.getUrl, { storageId: storageId as Id<'_storage'> });
     if (!url) {
       throw new Error('File not found');
     }
@@ -77,7 +77,7 @@ export async function deleteFile(storageId: string): Promise<void> {
     if (!convex) {
       throw new Error('Convex client not initialized. Check your environment variables.');
     }
-    await convex.action(api.fileStorage.deleteFile, { storageId });
+    await convex.action(api.fileStorage.deleteFile, { storageId: storageId as Id<'_storage'> });
   } catch (error) {
     console.error('Error deleting file:', error);
     throw new Error('Failed to delete file.');

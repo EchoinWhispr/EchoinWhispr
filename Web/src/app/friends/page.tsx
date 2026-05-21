@@ -312,12 +312,10 @@ function MoodMatchTab() {
   useEffect(() => {
     if (matchResult) {
       setMatch(matchResult);
-      setTriggerSearch(false); 
+      setTriggerSearch(false);
       setIsSearching(false);
-    } else if (matchResult === null && triggerSearch) {
-       setIsSearching(false);
     }
-  }, [matchResult, triggerSearch]);
+  }, [matchResult]);
 
   const handleFindMatch = () => {
     setMatch(null);

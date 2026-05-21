@@ -1,6 +1,6 @@
-import { requireUser } from './auth';
 'use strict';
 
+import { requireUser } from './auth';
 import { v } from 'convex/values';
 import { mutation, query, internalMutation } from './_generated/server';
 
@@ -48,11 +48,11 @@ export const getNotifications = query({
         .take(limit);
     }
 
-    // Get unread count using index-based query (efficient)
+    // Get unread count (capped at 1000 for performance)
     const unreadNotifications = await ctx.db
       .query('notifications')
       .withIndex('by_user_read', (q) => q.eq('userId', user._id).eq('read', false))
-      .collect();
+      .take(1000);
 
     const unreadCount = unreadNotifications.length;
 
@@ -84,7 +84,7 @@ export const getUnreadCount = query({
     const notifications = await ctx.db
       .query('notifications')
       .withIndex('by_user_read', (q) => q.eq('userId', user._id).eq('read', false))
-      .collect();
+      .take(1000);
 
     return notifications.length;
   },
@@ -220,21 +220,17 @@ export const createOrUpdateChamberNotification = internalMutation({
   },
   handler: async (ctx, args) => {
     // Find existing unread chamber notification for this chamber
-    // Query already filters by chamberId in metadata, no need for redundant .find()
-    const existingNotifications = await ctx.db
+    const existingNotification = await ctx.db
       .query('notifications')
       .withIndex('by_user', (q) => q.eq('userId', args.userId))
-      .filter((q) => 
+      .filter((q) =>
         q.and(
           q.eq(q.field('type'), 'chamber'),
           q.eq(q.field('read'), false),
           q.eq(q.field('metadata.chamberId'), args.chamberId)
         )
       )
-      .collect();
-
-    // Use the collected array directly - no redundant find() needed
-    const existingNotification = existingNotifications.length > 0 ? existingNotifications[0] : null;
+      .first();
 
     if (existingNotification) {
       // Update existing notification

@@ -1,5 +1,6 @@
 import { v } from 'convex/values';
 import { mutation, query } from './_generated/server';
+import { enforceRateLimit, recordRateLimitedAction } from './rateLimits';
 
 /**
  * Get the current user's profile.
@@ -73,6 +74,8 @@ export const updateProfile = mutation({
       throw new Error('User not found');
     }
 
+    await enforceRateLimit(ctx, user._id, 'UPDATE_PROFILE');
+
     // Get existing profile
     const existingProfile = await ctx.db
       .query('profiles')
@@ -99,6 +102,8 @@ export const updateProfile = mutation({
         updatedAt: now,
       });
     }
+
+    await recordRateLimitedAction(ctx, user._id, 'UPDATE_PROFILE');
 
     // Return the updated profile
     const updatedProfile = await ctx.db

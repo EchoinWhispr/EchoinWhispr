@@ -34,10 +34,10 @@ export const requestUnmasking = mutation({
       throw new Error("Could not find conversation partner");
     }
 
-    // Check for existing request in either direction
+    // Check for existing request from this user in this conversation
     const existingFromMe = await ctx.db
       .query("unmaskingRequests")
-      .withIndex("by_conversation_requester", (q) => 
+      .withIndex("by_conversation_requester_status", (q) => 
         q.eq("conversationId", args.conversationId).eq("requesterId", requester._id)
       )
       .filter((q) => 
@@ -68,24 +68,25 @@ export const requestUnmasking = mutation({
     const now = Date.now();
 
     if (existingFromThem) {
-      // Both have now requested - upgrade to mutual_pending
+      // Both have now requested - complete the ceremony atomically
       await ctx.db.patch(existingFromThem._id, {
-        status: "mutual_pending",
+        status: "completed",
         respondedAt: now,
+        completedAt: now,
       });
 
-      // Create our request as well
       await ctx.db.insert("unmaskingRequests", {
         requesterId: requester._id,
         targetId: targetId,
         conversationId: args.conversationId,
-        status: "mutual_pending",
+        status: "completed",
         createdAt: now,
+        completedAt: now,
       });
 
       return { 
-        status: "mutual_pending",
-        message: "Both of you have requested to unmask! Proceed to reveal.",
+        status: "completed",
+        message: "Identities revealed to each other!",
       };
     }
 
@@ -137,11 +138,10 @@ export const respondToUnmasking = mutation({
       return { status: "declined" };
     }
 
-    // User accepts - upgrade to mutual_pending or complete
-    // First check if we also have a pending request
+    // Check if we also have a pending request (mutual request)
     const ourRequest = await ctx.db
       .query("unmaskingRequests")
-      .withIndex("by_conversation_requester", (q) => 
+      .withIndex("by_conversation_requester_status", (q) => 
         q.eq("conversationId", request.conversationId).eq("requesterId", user._id)
       )
       .filter((q) => 
@@ -153,7 +153,7 @@ export const respondToUnmasking = mutation({
       .first();
 
     if (ourRequest) {
-      // Both have requested - complete both
+      // Both have requested - complete ceremony atomically
       await ctx.db.patch(args.requestId, {
         status: "completed",
         respondedAt: now,
@@ -171,30 +171,30 @@ export const respondToUnmasking = mutation({
       };
     }
 
-    // We're accepting their request, upgrade to mutual_pending
+    // Accept and complete ceremony atomically
     await ctx.db.patch(args.requestId, {
-      status: "accepted",
+      status: "completed",
       respondedAt: now,
+      completedAt: now,
     });
 
-    // Create our matching request
     await ctx.db.insert("unmaskingRequests", {
       requesterId: user._id,
       targetId: request.requesterId,
       conversationId: request.conversationId,
-      status: "accepted",
+      status: "completed",
       createdAt: now,
-      respondedAt: now,
+      completedAt: now,
     });
 
     return { 
-      status: "accepted",
-      message: "You've accepted the unmasking. Completing ceremony...",
+      status: "completed",
+      message: "Identities revealed to each other!",
     };
   },
 });
 
-// Complete the unmasking ceremony (after both accept)
+// Complete the unmasking ceremony (kept for backward compatibility with old flow)
 export const completeUnmasking = mutation({
   args: {
     conversationId: v.id("conversations"),
@@ -202,7 +202,6 @@ export const completeUnmasking = mutation({
   handler: async (ctx, args) => {
     const user = await requireUser(ctx);
 
-    // Check that both users have accepted or mutual_pending
     const allRequests = await ctx.db
       .query("unmaskingRequests")
       .withIndex("by_conversation", (q) => q.eq("conversationId", args.conversationId))
@@ -218,7 +217,6 @@ export const completeUnmasking = mutation({
 
     const now = Date.now();
 
-    // Mark all as completed
     for (const request of validRequests) {
       await ctx.db.patch(request._id, {
         status: "completed",
@@ -283,7 +281,7 @@ export const getUnmaskingStatus = query({
       };
     }
 
-    // Check for mutual pending
+    // Check for mutual pending (backward compat with old flow)
     const mutualPending = allRequests.filter(r => r.status === "mutual_pending");
     if (mutualPending.length >= 1) {
       return {
@@ -293,8 +291,6 @@ export const getUnmaskingStatus = query({
         message: "Both ready to reveal! Complete the ceremony.",
       };
     }
-
-    // Check for incoming pending request
     const incomingRequest = allRequests.find(
       r => r.targetId === user._id && r.status === "pending"
     );
@@ -360,14 +356,14 @@ export const getUnmaskingHistory = query({
     const asRequester = await ctx.db
       .query("unmaskingRequests")
       .withIndex("by_requester", (q) => q.eq("requesterId", user._id))
-      .filter((q) => q.eq(q.field("status"), "completed"))
-      .collect();
+      .collect()
+      .then(rs => rs.filter(r => r.status === "completed"));
 
     const asTarget = await ctx.db
       .query("unmaskingRequests")
       .withIndex("by_target", (q) => q.eq("targetId", user._id))
-      .filter((q) => q.eq(q.field("status"), "completed"))
-      .collect();
+      .collect()
+      .then(rs => rs.filter(r => r.status === "completed"));
 
     // Combine and dedupe by conversation
     const conversationMap = new Map<string, typeof asRequester[0]>();
@@ -409,10 +405,11 @@ export const cancelUnmaskingRequest = mutation({
 
     const request = await ctx.db
       .query("unmaskingRequests")
-      .withIndex("by_conversation_requester", (q) => 
-        q.eq("conversationId", args.conversationId).eq("requesterId", user._id)
+      .withIndex("by_conversation_requester_status", (q) => 
+        q.eq("conversationId", args.conversationId)
+         .eq("requesterId", user._id)
+         .eq("status", "pending")
       )
-      .filter((q) => q.eq(q.field("status"), "pending"))
       .first();
 
     if (!request) {

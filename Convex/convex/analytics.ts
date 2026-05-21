@@ -1,4 +1,5 @@
 import { requireUser } from './auth';
+import { isAdmin } from './adminAuth';
 import { v } from "convex/values";
 import { mutation, query, internalMutation } from "./_generated/server";
 
@@ -446,7 +447,7 @@ export const getYearInReview = query({
   },
 });
 
-// Update analytics (manual trigger for testing)
+// Update analytics (admin-only manual trigger)
 export const updateDailyAnalytics = mutation({
   args: {
     messagesSent: v.optional(v.number()),
@@ -454,7 +455,24 @@ export const updateDailyAnalytics = mutation({
     newConnections: v.optional(v.number()),
   },
   handler: async (ctx, args) => {
-    const user = await requireUser(ctx);
+    const identity = await ctx.auth.getUserIdentity();
+    if (!identity) {
+      throw new Error('Not authenticated');
+    }
+
+    const isAdminUser = await isAdmin(ctx, identity.subject);
+    if (!isAdminUser) {
+      throw new Error('Unauthorized: Admin access required');
+    }
+
+    const user = await ctx.db
+      .query('users')
+      .withIndex('by_clerk_id', (q) => q.eq('clerkId', identity.subject))
+      .first();
+
+    if (!user) {
+      throw new Error('User not found');
+    }
 
     const today = new Date().toISOString().split("T")[0];
 

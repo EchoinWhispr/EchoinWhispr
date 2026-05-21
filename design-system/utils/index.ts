@@ -148,7 +148,7 @@ export const validationUtils = {
   // Validate spacing values
   isValidSpacing: (value: string): boolean => {
     const validSpacing = Object.values(spacing);
-    return validSpacing.includes(value as any);
+    return (validSpacing as readonly string[]).includes(value);
   },
 };
 
